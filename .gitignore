@@ -1,0 +1,9 @@
+# SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
+# SPDX-License-Identifier: Apache-2.0
+#
+# Build products of rpm/dhd/helpers/build_packages.sh -c (mb2 and
+# droid-configs.inc work in this directory).
+documentation.list
+installroot/
+RPMS/
+tmp/

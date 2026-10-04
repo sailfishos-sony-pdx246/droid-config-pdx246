@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
+# SPDX-License-Identifier: Apache-2.0
+#
+# Brings the WLAN firmware up before connman starts (see wlan-driver-on.sh).
+
+[Unit]
+Description=Start the qcacld-3.0 WLAN driver
+After=droid-hal-init.service
+Before=connman.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh /usr/bin/droid/wlan-driver-on.sh
+
+[Install]
+WantedBy=network.target

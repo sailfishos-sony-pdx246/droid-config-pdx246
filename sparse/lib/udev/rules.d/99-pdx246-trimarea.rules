@@ -1,0 +1,11 @@
+# SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
+# SPDX-License-Identifier: Apache-2.0
+#
+# Sony's TrimArea daemon (service tad in /odm/etc/init/init.sony-platform.rc)
+# runs as uid/gid 2997 (oem_2997, vendor_tad) and opens
+# /dev/block/bootdevice/by-name/TA. Stock's /vendor/etc/ueventd.rc gives the
+# partition to vendor_tad with mode 0770 by its by-name path, a rule dhd's
+# makeudev cannot convert. Match the GPT label (TA is sda1 on pdx246) and apply
+# the same ownership; numeric ids, as droid-hal's user database may not name
+# them.
+SUBSYSTEM=="block", ENV{DEVTYPE}=="partition", ENV{ID_PART_ENTRY_SCHEME}=="gpt", ENV{ID_PART_ENTRY_NAME}=="TA", OWNER="2997", GROUP="2997", MODE="0770"

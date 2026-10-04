@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
+# SPDX-License-Identifier: Apache-2.0
+#
+# Partition map for /usr/sbin/flash-partition (droid-hal-configs), which the
+# on-device update scripts in /var/lib/platform-updates call. Slot a only:
+# Sailfish OS always runs from slot a.
+#
+# flash-partition flashes only when CPUCHECK_STRING occurs in /proc/cpuinfo or
+# in /sys/firmware/devicetree/base/model (so never on the image build host).
+# pdx246's dtb and dtbo are built from kernel/sony/sm6450-devicetrees, whose
+# model strings are all Qualcomm ones ("Qualcomm Technologies, Inc. Parrot ...").
+# TODO(device): replace with the exact model (adb root on LineageOS, or any
+# root shell: cat /sys/firmware/devicetree/base/model).
+CPUCHECK_STRING="Parrot"
+
+# flash-partition requires entry 1; the other indices are the sdaN numbers.
+# Read from the phone (ls -l /dev/block/bootdevice/by-name/, 2026-10-04), equal
+# to the stock 70.2.A.4.168 GPT and to hybris-boot's fixup-mountpoints entry.
+PART_1="boot_a"
+PART_77="dtbo_a"
+PART_79="vendor_boot_a"
+
+PART_REAL_1="sda72"
+PART_REAL_77="sda77"
+PART_REAL_79="sda79"
+
+PART_I="1 77 79"

@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
+# SPDX-License-Identifier: Apache-2.0
+#
+# Marks slot a as successfully booted as soon as the boot HAL runs
+# (android.hardware.boot-service.qti, started by droid-hal-init), not only once
+# the UI is up: the generic droid-bootctl.service of droid-hal-configs
+# sparse-16 runs after start-user-session.service. Every boot that does not
+# reach the UI would otherwise use up a boot attempt, and after about seven
+# the bootloader fails over to slot b, which holds no bootable system on this
+# phone. droid-bootctl.sh is idempotent (it only marks an unmarked slot), so
+# droid-bootctl.service running later does no harm.
+
+[Unit]
+Description=Mark the boot slot successful once the boot HAL runs (pdx246)
+After=droid-hal-init.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh /usr/bin/droid/droid-bootctl.sh
+# bootctl waits for the boot HAL; do not hold up multi-user.target for long
+# if the HAL never registers.
+TimeoutStartSec=60
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,7 @@
+/boot/hybris-boot.img
+/boot/hybris-recovery.img
+/boot/vendor_boot.img
+/boot/dtbo.img
+/boot/vendor_dlkm.img
+droid-config-pdx246-out-of-image-files
+/etc/hw-release

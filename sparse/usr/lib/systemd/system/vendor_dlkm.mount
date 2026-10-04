@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
+# SPDX-License-Identifier: Apache-2.0
+#
+# /vendor_dlkm from the logical partition vendor_dlkm_a (slot a) of super, mapped by
+# dmsetup-dynparts.service. dhd skips this fstab entry (makefstab_skip_entries
+# in droid-hal-pdx246); fstab.default: ext4, ro, logical, slotselect.
+
+[Unit]
+Description=Droid mount for /vendor_dlkm
+Requires=dmsetup-dynparts.service
+After=dmsetup-dynparts.service
+Before=local-fs.target
+
+[Mount]
+What=/dev/mapper/dynpart-vendor_dlkm_a
+Where=/vendor_dlkm
+Type=ext4
+Options=ro
+# Default is 90 s, too long to wait for a partition that is not there.
+TimeoutSec=10
+
+[Install]
+WantedBy=local-fs.target

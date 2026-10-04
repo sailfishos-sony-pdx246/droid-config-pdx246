@@ -1,0 +1,15 @@
+# SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
+# SPDX-License-Identifier: Apache-2.0
+#
+# The built-in ALSA card belongs to the Android audio HAL; PulseAudio reaches it
+# only through module-droid-card. Mark it so that PulseAudio's udev detection
+# (90-pulseaudio.rules, module-udev-detect, e.g. once USB audio is enabled)
+# never opens its PCMs.
+# The card id is the card name with non-alphanumerics dropped, cut to 15
+# characters. The parrot sound-card names in pdx246's dtbo are
+# parrot-qrd-snd-card and parrot-qrd-sku1-snd-card (ids parrotqrdsndcar and
+# parrotqrdsku1sn); which one the phone uses is not known yet, so match the
+# prefix.
+# TODO(device): replace the glob with the id from "cat /proc/asound/cards"
+# (needs adb root on LineageOS, or any shell on Sailfish OS).
+SUBSYSTEM=="sound", KERNEL=="card*", ATTR{id}=="parrot*", ENV{PULSE_IGNORE}="1"

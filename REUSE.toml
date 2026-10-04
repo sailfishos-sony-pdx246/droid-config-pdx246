@@ -1,0 +1,54 @@
+# SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
+# SPDX-License-Identifier: Apache-2.0
+
+# Copyright and licensing for the files that cannot say it themselves. Files
+# whose own header names every holder and licence are not listed (the spec,
+# the two patterns, the pack script, every file under sparse/ except the
+# symlinks, .gitignore, README.md).
+#
+# The droid-configs-device/ submodule (mer-hybris/droid-hal-configs, Jolla Ltd.,
+# GPLv2 per its droid-configs.inc) is not part of this repository; see
+# SUBMODULES.md.
+
+version = 1
+SPDX-PackageName = "droid-config-pdx246"
+SPDX-PackageSupplier = "Johannes Meyer zum Alten Borgloh"
+SPDX-PackageDownloadLocation = "NOASSERTION"
+
+# Written for this port, in formats that carry no header by convention or
+# whose consumers would read a header as data (rpm %files lists), and the
+# .gitmodules that "git submodule add" creates (SUBMODULES.md).
+[[annotations]]
+path = ["NOTES.md", "SUBMODULES.md", "out-of-image-files.files", ".gitmodules"]
+SPDX-FileCopyrightText = "Johannes Meyer zum Alten Borgloh"
+SPDX-License-Identifier = "Apache-2.0"
+
+# Symlinks: systemd "wants" links and the audio compat link.
+[[annotations]]
+path = [
+    "sparse/usr/lib/systemd/system/local-fs.target.wants/*.mount",
+    "sparse/usr/lib/systemd/system/multi-user.target.wants/pdx246-mark-slot.service",
+    "sparse/usr/lib/systemd/system/network.target.wants/wifisetup.service",
+    "sparse/usr/libexec/droid-hybris/system/lib64/hw/audio.primary.parrot.so",
+]
+SPDX-FileCopyrightText = "Johannes Meyer zum Alten Borgloh"
+SPDX-License-Identifier = "Apache-2.0"
+
+# Kickstart fragments that ssu pastes into the .ks file: a comment line would
+# become an %attachment entry (mic would look it up as a package). Both follow
+# Jolla's files of the same name in mer-hybris/droid-config-sony-zambezi
+# (70a3767). Jolla's files carry no notice; the droid-config packages that ship
+# them are tagged GPLv2 (droid-hal-configs droid-configs.inc).
+#
+# part/pdx246 is Jolla's part/xqdc54 unchanged: Jolla only.
+[[annotations]]
+path = "kickstart/part/pdx246"
+SPDX-FileCopyrightText = "Jolla Ltd."
+SPDX-License-Identifier = "GPL-2.0-only"
+
+# attachment/pdx246 is Jolla's attachment/xqdc54 with the pdx246 images and
+# package.
+[[annotations]]
+path = "kickstart/attachment/pdx246"
+SPDX-FileCopyrightText = ["Jolla Ltd.", "Johannes Meyer zum Alten Borgloh"]
+SPDX-License-Identifier = "GPL-2.0-only"

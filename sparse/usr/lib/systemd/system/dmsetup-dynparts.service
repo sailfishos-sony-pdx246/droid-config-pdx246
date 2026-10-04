@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
+# SPDX-License-Identifier: Apache-2.0
+#
+# Maps the logical partitions of super (slot a) to /dev/mapper/dynpart-*.
+# Pulled in and ordered by the dynamic-partition mount units (Requires=/After=).
+# Waits for udev's /dev/disk/by-partlabel/super instead of using a kernel name:
+# UFS LUNs are scanned asynchronously, the by-partlabel link exists only once
+# udev has probed the GPT, and a label survives a different sdX numbering.
+# Wants= (not Requires=): if the link never appears, the script still runs
+# after the device timeout and falls back to /dev/sda95.
+
+[Unit]
+Description=Map the Android dynamic partitions (super, slot a)
+DefaultDependencies=no
+Wants=dev-disk-by\x2dpartlabel-super.device
+After=dev-disk-by\x2dpartlabel-super.device systemd-udevd.service
+Before=local-fs-pre.target droid-hal-init.service
+Conflicts=shutdown.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh /usr/bin/droid/dmsetup-dynparts.sh
+TimeoutStartSec=60

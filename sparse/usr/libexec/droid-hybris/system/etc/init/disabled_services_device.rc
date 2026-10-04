@@ -1,0 +1,21 @@
+# SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
+# SPDX-License-Identifier: Apache-2.0
+#
+# Device-specific additions to sparse-16's disabled_services.rc (which stays as
+# it is). droid-hal-init parses this directory before /vendor and /odm, so a
+# definition here wins over a vendor one without "override". Every entry needs
+# a "user" line: Android 16 init rejects services without one when
+# ro.vendor.api_level > 202404 (service_parser.cpp); pdx246 has 34, but keep it.
+#
+# Not here, on purpose:
+# - vendor.audio-hal: sparse-16 disables android.hardware.audio.service, but
+#   pdx246's definition (/vendor/etc/init/android.hardware.audio.service_64.rc)
+#   has "override" and replaces that stub. That is wanted: audio.hidl_compat
+#   forwards to this service.
+# - vendor.qti.vibrator, vendor.usb-hal, vendor.usbgadget-hal: idle without the
+#   Android framework; disable only if they turn out to interfere.
+
+# Sony's diagnostics/usage-data daemon (init.sony.idd.rc); nothing in Sailfish
+# OS consumes its output. The 10 IV/10 V port disables it as well.
+service iddd /vendor/bin/iddd_HYBRIS_DISABLED
+    user root

@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
+# SPDX-License-Identifier: Apache-2.0
+#
+# Included by default_sailfish.pa.d/droid.pa instead of its default
+# "load-module module-droid-card rate=48000".
+#
+# The primary module that module-droid-card opens is audio.hidl_compat (through
+# the symlink /usr/libexec/droid-hybris/system/lib64/hw/audio.primary.parrot.so),
+# which forwards to the vendor's HIDL audio service. Volume is applied in
+# PulseAudio, as on the other hidl_compat ports.
+# TODO(runtime): the arguments depend on the pulseaudio-modules-droid version
+# (14.2.106 is the one recommended for Sailfish OS 5.1); check "pactl list
+# modules" and the journal for "Failed to parse module arguments".
+load-module module-droid-card rate=48000 hw_volume=false

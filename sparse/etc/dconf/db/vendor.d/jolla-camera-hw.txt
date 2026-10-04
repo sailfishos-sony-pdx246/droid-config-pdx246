@@ -1,0 +1,9 @@
+# SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
+# SPDX-License-Identifier: Apache-2.0
+#
+# Labels of the back cameras in the order droidmedia enumerates them: the
+# Xperia 10 VI has a main (wide) and an ultra-wide back camera.
+# TODO(runtime): check the order and the zoom factors in the Camera app.
+
+[apps/jolla-camera]
+backCameraLabels=["1.0", "0.6"]

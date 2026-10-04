@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
+# SPDX-License-Identifier: Apache-2.0
+#
+# /system for the vendor side: the system image of super has the
+# system-as-root layout (its build sets root_dir in misc_info.txt), so the
+# partition is mounted at /system_root and its system/ directory is bound here.
+
+[Unit]
+Description=Droid mount for /system
+Requires=system_root.mount
+After=system_root.mount
+Before=local-fs.target
+
+[Mount]
+What=/system_root/system
+Where=/system
+Type=none
+Options=bind
+# Default is 90 s, too long to wait for a partition that is not there.
+TimeoutSec=10
+
+[Install]
+WantedBy=local-fs.target
