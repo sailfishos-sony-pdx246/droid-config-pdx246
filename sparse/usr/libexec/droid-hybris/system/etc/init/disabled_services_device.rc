@@ -19,3 +19,12 @@
 # OS consumes its output. The 10 IV/10 V port disables it as well.
 service iddd /vendor/bin/iddd_HYBRIS_DISABLED
     user root
+
+# atrace HAL (vendor trace categories for atrace/Perfetto); nothing in Sailfish
+# OS uses it. Its constructor CHECKs that tracefs is mounted
+# (hardware/interfaces atrace/1.0/default AtraceDevice.cpp), and nothing mounts
+# it here: droid-hal-init's mount builtin is a no-op (hybris patch 0024), the
+# GKI kernel has CONFIG_TRACEFS_DISABLE_AUTOMOUNT=y and dhd's makefstab skips
+# /sys/kernel/tracing. It aborted every 5 s on the third boot.
+service vendor.atrace-hal-1-0 /vendor/bin/hw/android.hardware.atrace@1.0-service_HYBRIS_DISABLED
+    user root

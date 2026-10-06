@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
+# SPDX-License-Identifier: Apache-2.0
+#
+# /dev/block/by-name/<GPT label> for the partitions of the boot device, as
+# Android's ueventd creates them for androidboot.boot_devices
+# (system/core/init/devices.cpp). Under Sailfish OS ueventd does not run
+# (hybris patches system/core 0006, 0016), and dcd's 998-droid-system.rules
+# only create /dev/block/platform/soc/1d84000.ufshc/by-name (= bootdevice/by-name).
+# The vendor fstab.default names /dev/block/by-name/misc; without it the boot
+# HAL (android.hardware.boot-service.qti) aborts in its constructor, bootctl
+# waits forever and slot a is never marked successful.
+#
+# Only partitions on the UFS boot device, matched by DEVPATH (998 imports
+# PLATFORM_DEVICE only later): an SD card or USB disk with a GPT label such as
+# misc must never get these names. Absolute targets /dev/block/sdXN, as
+# ueventd and 998 make them. Sorted after 60-persistent-storage.rules, which
+# sets ID_PART_ENTRY_*.
+ACTION!="add", GOTO="pdx246_by_name_end"
+SUBSYSTEM!="block", GOTO="pdx246_by_name_end"
+ENV{DEVTYPE}!="partition", GOTO="pdx246_by_name_end"
+DEVPATH!="/devices/platform/soc/1d84000.ufshc/*", GOTO="pdx246_by_name_end"
+ENV{ID_PART_ENTRY_SCHEME}=="gpt", ENV{ID_PART_ENTRY_NAME}=="?*", RUN+="/bin/mkdir -p /dev/block/by-name", RUN+="/bin/ln -sfn /dev/block/$name /dev/block/by-name/$env{ID_PART_ENTRY_NAME}"
+LABEL="pdx246_by_name_end"

@@ -361,7 +361,7 @@ Why this works and the ref's bind mount would not:
   id prefix `parrot*` (dtbo strings: parrot-qrd-snd-card, parrot-qrd-sku1-snd-card;
   ALSA id = alphanumerics, 15 chars). Only matters once udev-detect is loaded.
 
-### D11. disabled_services: sparse-16 file kept, one device entry
+### D11. disabled_services: sparse-16 file kept, two device entries
 
 - sparse-16's disabled_services.rc already has `user root` on every entry (Android
   16 init errors without a user only when ro.vendor.api_level > 202404,
@@ -372,6 +372,12 @@ Why this works and the ref's bind mount would not:
   its definition has no `override`, so the stub parsed first wins; the 10 V port
   disables it too (ref disabled_services.rc:1). Optional: drop the line if Sony
   services complain.
+- `vendor.atrace-hal-1-0` (added after the third boot, 2026-10-06): its constructor
+  CHECKs that tracefs is mounted (hardware/interfaces atrace/1.0/default
+  AtraceDevice.cpp:66-74). Nothing mounts it: droid-hal-init's mount builtin is a no-op
+  (hybris patch 0024), GKI has CONFIG_TRACEFS_DISABLE_AUTOMOUNT=y and dhd's makefstab skips
+  /sys/kernel/tracing. It aborted every 5 s; nothing in Sailfish OS uses it.
+- odsign gets its own file, `odsign_hybris.rc` (D24).
 - Not disabled: vendor.audio-hal (D10), vendor.qti.vibrator (sibling droid-hal-version
   NOTES section 5 asks to keep it), vendor.usb-hal / vendor.usbgadget-hal (idle without
   the framework; the ref disabled vendor.usb-hal without a recorded reason).
@@ -424,6 +430,13 @@ EnableValue 0, DisableValue 1, the node and values of the LineageOS port's charg
 control (dev/device.mk:360-365). Keys as in zambezi's 70-battery-zambezi.ini. The ref's
 qcom-charge-control-fixup files are not needed.
 
+Backlight (third boot, 2026-10-06): mce probes /sys/class/backlight/* once at startup
+(5.28 s), but panel0-backlight appears only when msm_drm's deferred panel bind completes
+(5.96-6.11 s), so mce had no brightness control. `mce.service.d/50-pdx246-wait-backlight.conf`
+waits up to 10 s for it. `etc/mce/70-pdx246-hybris-features.ini` sets BackLight/KeyPad false:
+mce-plugin-libhybris is built without libhybris (upstream `%bcond_with hybris`, LED code only),
+so those lookups only logged "undefined symbol mce_hybris_backlight_init".
+
 ### D15. connman
 
 `etc/connman/main.conf.d/50-pdx246.conf` (Sailfish connman reads `main.conf.d`,
@@ -441,12 +454,22 @@ inferred, not seen.
 
 ### D16. WLAN
 
-`wifisetup.service` -> `usr/bin/droid/wlan-driver-on.sh`: waits for `/dev/wlan`, writes
-`ON`. qcacld-3.0 built as a module creates `/dev/wlan` (WLAN_CTRL_NAME "wlan",
-`$ANDROID_ROOT/kernel/sony/sm6450-modules/qcom/opensource/wlan/qcacld-3.0/configs/parrot_gki_adrastea_defconfig:212`;
-wlan_hdd_main.c:17948-17988) and starts on "ON"; the `/sys/kernel/boot_wlan` interface
-zambezi uses exists only for built-in builds (`#ifndef MODULE`, wlan_hdd_main.c:270-282).
-After=droid-hal-init (the module comes from vendor_modprobe), Before=connman.
+`wifisetup.service` -> `usr/bin/droid/wlan-driver-on.sh`: waits for wlan0, then writes
+`ON` to `/dev/wlan`. qcacld-3.0 built as a module creates `/dev/wlan` at insmod (WLAN_CTRL_NAME "wlan",
+`$ANDROID_ROOT/kernel/sony/sm6450-modules/qcom/opensource/wlan/qcacld-3.0/configs/parrot_gki_adrastea_defconfig:212`);
+the `/sys/kernel/boot_wlan` interface zambezi uses exists only for built-in builds
+(`#ifndef MODULE`, wlan_hdd_main.c:270-282).
+
+Corrected after the third boot (2026-10-06): "ON" does not start the firmware. On SM6450
+the WLAN firmware runs on the WPSS remoteproc, which the vendor boots at early-boot
+(/vendor/etc/init/init.vendor.wlan.rc: `write /sys/kernel/icnss/wpss_boot 1`, icnss2
+main.c wpss_boot_store -> rproc_boot). On FW-ready icnss2 probes the driver, which creates
+wlan0; "ON" only waits up to 20 s for that probe (HDD_WLAN_START_WAIT_TIME, wlan_hdd_main.c
+wlan_hdd_state_ctrl_param_write) and syncs the regulatory domain. The first version wrote ON
+at 6.7 s, the driver timed out at 27.6 s (EINVAL), WPSS was never booted (D24 stall), and
+connman (Before=connman) waited for it. Now the unit is WantedBy=multi-user.target, without
+Before=connman: network.target lies on the path to systemd-user-sessions, so a wait here
+would delay the UI, and connman picks up a later wlan0 (to check on the next boot).
 
 ### D17. sensorfw
 
@@ -458,6 +481,11 @@ unchanged. `sensord.conf.d/60-sensors-pdx246.conf` only turns off the pressure s
 (no barometer). The pattern requires `hybris-libsensorfw-qt5-binder >= 0.15.2`
 (0.15.1 in adaptation-common 5.1.0.11 per the sibling droid-hal-version NOTES), so it
 must be built with `--mw=https://github.com/sailfishos/sensorfw --spec=rpm/sensorfw-qt5-binder.spec`.
+
+`sensorfwd.service.d/50-pdx246-wait-sensors-hal.conf` (third boot, 2026-10-06): sensorfw's
+binder backend gives up after 5 x 1 s without a HAL (hybrisbackend_binder.cpp:41-55) and
+systemd stops after 3 restarts; the multihal only starts with class hal ("on boot") and needs
+the ADSP sensor domain. The drop-in waits up to 45 s for ISensors/default (binder-list).
 
 ### D18. NFC
 
@@ -583,17 +611,76 @@ does nothing. bootctl waits for the HAL (BootControlClient::WaitForService), so 
 unit has TimeoutStartSec=60: a HAL that never registers holds multi-user.target for
 at most a minute.
 
+Third boot (2026-10-06): the HAL never registered. android.hardware.boot-service.qti does
+CHECK(bootcontrol_init()), which reads the Virtual A/B message from misc, found through
+vendor fstab.default:47 as `/dev/block/by-name/misc`. ueventd (which makes
+/dev/block/by-name) does not run under hybris, and dcd's 998-droid-system.rules only make
+.../1d84000.ufshc/by-name. So the HAL aborted every 10 s, pdx246-mark-slot timed out and
+droid-bootctl.service (no timeout) held graphical.target. Fixes:
+`lib/udev/rules.d/99-pdx246-by-name.rules` makes absolute /dev/block/by-name/<label> links for
+UFS partitions only (DEVPATH match), and `droid-bootctl.service.d/50-pdx246-timeout.conf`
+gives droid-bootctl 120 s. With by-name present, apexd's /dev/block/by-name/userdata and
+thermal-engine-v2's limits-cdsp (read-only) resolve as on Android. GPT on that boot:
+boot_a attrs 0x0037... (active, retry 6, not successful), boot_b 0x00f2... (unbootable).
+
 ### D23. Not taken from the ref (and why)
 
 overlays/, mount-overlays, overlays.service (fingerprint workaround for an AIDL-only
 HAL; pdx246 has HIDL 2.1); wait_for_keymaster (sparse-16 wait_for_keymint fits; the
 ref's wants link is broken); qcom-charge-control-fixup (D14); hwservicemanager.rc and
 vndservicemanager.rc LD_PRELOAD overrides (hybris-17.1 era; not in sparse-16);
-ofono-ril-ecclists.rc (duplicate of sparse-16 ecclist.rc); ld.config.txt and
-task_profiles (Android 15 dumps; droid-hal packages the A16 linkerconfig);
+ofono-ril-ecclists.rc (duplicate of sparse-16 ecclist.rc); ld.config.txt (an Android 15
+dump; droid-hal packages the A16 linkerconfig, see D24 for why it ran only once);
 etc/selinux (D9); compositor droid-hal-device.conf (same as dcd's); droid-bthelper
 (optional --mw package, BT call audio did not work on the 10 IV); modules-load.d (D8);
 flash-on-windows.bat and the SODP flashing README (Jolla texts, other device).
+
+Correction (third boot, 2026-10-06): task_profiles IS needed. libprocessgroup reads
+/etc/task_profiles.json (task_profiles.cpp:53), and on Sailfish /etc is not /system/etc.
+Without it logd's DropPrivs (system/logging/logd/main.cpp:76-79) finds no
+SCHED_SP_BACKGROUND profile and aborts with PLOG(FATAL) every 5 s, so there was no logcat.
+`etc/task_profiles.json` is now a copy of the Android 16 file (AOSP
+system/core/libprocessgroup/profiles/task_profiles.json, md5 e3bf84c5, identical to the LOS
+system image's /system/etc/task_profiles.json; REUSE.toml: AOSP, Apache-2.0). Not a link: the
+first try (fourth boot) was a link and logd still failed, because libprocessgroup reads it with
+android::base::ReadFileToString(), which opens with O_NOFOLLOW (system/libbase/file.cpp:250).
+first_api_level 34 needs no /etc/task_profiles/ directory. SCHED_SP_BACKGROUND is an aggregate profile and returns
+true even when no cgroup action applies. cgroups.json is left out on purpose: its v2 entry
+points at systemd's /sys/fs/cgroup, and /dev/cpuctl, /dev/blkio, /dev/cpuset do not exist.
+
+### D24. odsign and the linker configuration (Android 16 init under hybris)
+
+Third boot (2026-10-06), found by a diagnosis workflow and confirmed by independent
+verifiers (`notes/analysis/boot3-diagnosis-2026-10-06/`):
+- init.rc post-fs-data does `start odsign`, then `wait_for_prop odsign.key.done 1` (no
+  timeout; init runs no other action while it waits, init.cpp:1286). odsign could not link
+  (libstatspull.so is only in /apex/com.android.os.statsd) and exited 1 every 5 s, so
+  early-boot, "on boot" (class_start hal/core: composer, allocator, sensors, BT...) and the
+  queued droid.late_start trigger never ran: no UI, no WPSS/ADSP/CDSP boot.
+- Why it could not link: Android 16 (system/core 33b0992eba, "init: refactor
+  perform_apex_config") runs perform_apex_config's body once per mount namespace. hybris
+  patch 0033 disables SetupMountNamespaces(), so GetCurrentMountNamespace() always fails and
+  both calls (early-init, post-fs-data) count as bootstrap; the second does nothing. Before it,
+  enter_default_mount_ns bind-mounts /linkerconfig/default (the "#" placeholder from
+  early-init) over /linkerconfig. Everything started after ~6.9 s ran without linker
+  namespaces: APEX libraries not found, and vendor HALs loading /system/lib64 libbinder etc.
+- Fixes: (1) system/core hybris-23.2 commit "(hybris) Regenerate the linker configuration
+  after enter_default_mount_ns" (builtins.cpp: remember enter_default_mount_ns and count the
+  post-fs-data call as NS_DEFAULT), built into droid-hal-init. (2) `odsign_hybris.rc` here:
+  odsign stubbed (`_HYBRIS_DISABLED`, `override`) and odsign.key.done /
+  odsign.verification.done set `on post-fs`, because odsign has no job without ART/zygote and
+  any hang in it would stop init's queue again. Not at post-fs-data: that action would queue
+  behind init.rc's waiting one.
+- Still open: the 25 compressed APEXes (.capex: art, conscrypt, media.swcodec, ...) are not
+  activated (/data/apex/decompressed empty); only the 11 plain .apex are.
+- Fourth boot (2026-10-06): with init no longer stuck, the boot looped. Every boot ended at
+  ~17.8 s with `Got shutdown_command 'reboot,boringssl-self-check-failed'`: once
+  apexd.status=ready, init.boringssl.zygote64_32.rc runs `exec_start boringssl_self_test_apex32`,
+  whose binary is in the conscrypt APEX, which is a .capex and not active here; the
+  service has `reboot_on_failure`. `boringssl_apex_hybris.rc` redefines the two APEX self-tests
+  (init.rc's definitions, `override`, without reboot_on_failure), so they still run if conscrypt
+  is ever active. That boot did reach class hal/core/main/late_start: composer and allocator
+  started at 16.2 s, the linker config was regenerated at 15.9 s.
 
 ---
 
@@ -821,7 +908,15 @@ The final contract all four adaptation repos follow (2026-10-04):
 | sparse/usr/lib/systemd/system/local-fs.target.wants/*.mount | new symlinks | REUSE.toml |
 | sparse/usr/lib/systemd/system/usb-moded-configfs-setup.service, usb-moded.service.d/50-configfs-setup.conf | new | header |
 | sparse/usr/lib/systemd/system/wifisetup.service | new | header |
-| sparse/usr/lib/systemd/system/network.target.wants/wifisetup.service | new symlink | REUSE.toml |
+| sparse/usr/lib/systemd/system/multi-user.target.wants/wifisetup.service | new symlink (was network.target.wants until 2026-10-06, D16) | REUSE.toml |
+| sparse/usr/lib/systemd/system/droid-bootctl.service.d/50-pdx246-timeout.conf | new | header |
+| sparse/usr/lib/systemd/system/sensorfwd.service.d/50-pdx246-wait-sensors-hal.conf | new | header |
+| sparse/usr/lib/systemd/system/mce.service.d/50-pdx246-wait-backlight.conf | new | header |
+| sparse/etc/mce/70-pdx246-hybris-features.ini | new | header |
+| sparse/etc/task_profiles.json | copy of AOSP system/core/libprocessgroup/profiles/task_profiles.json (D23) | REUSE.toml: The Android Open Source Project, Apache-2.0 |
+| sparse/usr/libexec/droid-hybris/system/etc/init/boringssl_apex_hybris.rc | derived from AOSP init.rc service definitions (D24) | header: The Android Open Source Project + user, Apache-2.0 |
+| sparse/lib/udev/rules.d/99-pdx246-by-name.rules | new | header |
+| sparse/usr/libexec/droid-hybris/system/etc/init/odsign_hybris.rc | new | header |
 | sparse/usr/lib/systemd/system/pdx246-mark-slot.service | new (runs sparse-16's droid-bootctl.sh earlier) | header |
 | sparse/usr/lib/systemd/system/multi-user.target.wants/pdx246-mark-slot.service | new symlink | REUSE.toml |
 | sparse/usr/share/csd/settings.d/hw-settings.ini | derived from mer-hybris/droid-config-sony-murray@83c7d48:sparse/usr/share/csd/settings.d/10-hw-settings.ini (Jolla Ltd.) | header: Jolla Ltd. + user, GPL-2.0-only, "Based on" line (`;` comments) |

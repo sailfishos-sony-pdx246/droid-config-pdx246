@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
+# SPDX-License-Identifier: Apache-2.0
+#
+# odsign (on-device signing of ART artifacts) has no job without ART and zygote.
+# init.rc's post-fs-data runs "start odsign" and then
+# "wait_for_prop odsign.key.done 1", with no timeout. While it waits, init runs
+# no other action, so early-boot (WPSS, ADSP and CDSP boot), "on boot"
+# (class_start hal/core: composer, allocator, sensors, Bluetooth...) and the
+# late_start trigger never come. On the third pdx246 boot odsign could not
+# even link (libstatspull.so is APEX-only and /linkerconfig/ld.config.txt was
+# the "#" placeholder) and exited 1 every 5 s without setting the property.
+#
+# Disable odsign and set its properties before post-fs-data; wait_for_prop
+# returns at once when the value is already set (system/core init.cpp
+# StartWaiting). The setprops must not move to post-fs-data: an action here
+# is queued after init.rc's own, which is the one that waits.
+# odsign.verification.done is only waited for in zygote-start, which hybris
+# does not trigger; set it anyway. "override" keeps this definition even if a
+# file sorting before this one ever defines odsign.
+
+service odsign /system/bin/odsign_HYBRIS_DISABLED
+    user root
+    disabled
+    oneshot
+    override
+
+on post-fs
+    setprop odsign.key.done 1
+    setprop odsign.verification.done 1

@@ -1,17 +1,21 @@
 # SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
 # SPDX-License-Identifier: Apache-2.0
 #
-# Brings the WLAN firmware up before connman starts (see wlan-driver-on.sh).
+# Tells the qcacld-3.0 WLAN driver that Wi-Fi may come up (see
+# wlan-driver-on.sh). Not ordered before connman or network.target: the
+# firmware only runs once droid-hal-init's early-boot has booted the WPSS, and
+# network.target sits on the path to systemd-user-sessions, so a wait here
+# would delay the UI. connman picks up wlan0 whenever it appears.
 
 [Unit]
 Description=Start the qcacld-3.0 WLAN driver
 After=droid-hal-init.service
-Before=connman.service
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
+TimeoutStartSec=90
 ExecStart=/bin/sh /usr/bin/droid/wlan-driver-on.sh
 
 [Install]
-WantedBy=network.target
+WantedBy=multi-user.target

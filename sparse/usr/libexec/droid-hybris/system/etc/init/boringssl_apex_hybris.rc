@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: The Android Open Source Project
+# SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
+# SPDX-License-Identifier: Apache-2.0
+#
+# init.rc's BoringSSL self-tests from the conscrypt APEX, without
+# "reboot_on_failure". init.boringssl.zygote64_32.rc runs them with exec_start
+# once apexd.status=ready. com.android.conscrypt is a compressed APEX (.capex),
+# and on this port the compressed APEXes are not activated
+# (/data/apex/decompressed stays empty), so the binary is missing, exec_start
+# fails and the original definition rebooted the phone
+# ("reboot,boringssl-self-check-failed") about 18 s into every boot (fourth
+# boot, 2026-10-06). The tests from /system (boringssl_self_test32/64, run
+# "on init") stay as they are. The definitions are init.rc's (Android 16) with
+# reboot_on_failure removed and "override" added: init.rc and its imports are
+# parsed before this directory.
+
+service boringssl_self_test_apex32 /apex/com.android.conscrypt/bin/boringssl_self_test32
+    stdio_to_kmsg
+    capabilities
+    user nobody
+    override
+
+service boringssl_self_test_apex64 /apex/com.android.conscrypt/bin/boringssl_self_test64
+    stdio_to_kmsg
+    capabilities
+    user nobody
+    override

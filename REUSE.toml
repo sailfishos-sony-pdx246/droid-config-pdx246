@@ -28,7 +28,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
     "sparse/usr/lib/systemd/system/local-fs.target.wants/*.mount",
     "sparse/usr/lib/systemd/system/multi-user.target.wants/pdx246-mark-slot.service",
-    "sparse/usr/lib/systemd/system/network.target.wants/wifisetup.service",
+    "sparse/usr/lib/systemd/system/multi-user.target.wants/wifisetup.service",
     "sparse/usr/libexec/droid-hybris/system/lib64/hw/audio.primary.parrot.so",
 ]
 SPDX-FileCopyrightText = "Johannes Meyer zum Alten Borgloh"
@@ -52,3 +52,13 @@ SPDX-License-Identifier = "GPL-2.0-only"
 path = "kickstart/attachment/pdx246"
 SPDX-FileCopyrightText = ["Jolla Ltd.", "Johannes Meyer zum Alten Borgloh"]
 SPDX-License-Identifier = "GPL-2.0-only"
+
+# Android 16's task profiles, copied unchanged from AOSP
+# system/core/libprocessgroup/profiles/task_profiles.json (identical to
+# /system/etc/task_profiles.json of the LineageOS 23.2 system image). JSON has no
+# comments, so the notice is here. A copy, not a link: libprocessgroup reads it
+# with android::base::ReadFileToString(), which opens with O_NOFOLLOW.
+[[annotations]]
+path = "sparse/etc/task_profiles.json"
+SPDX-FileCopyrightText = "The Android Open Source Project"
+SPDX-License-Identifier = "Apache-2.0"
