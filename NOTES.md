@@ -291,6 +291,20 @@ modules-load.d list exists because its kernel set differs. Runtime check:
   (target rpmdb). Shipping it would redistribute a Jolla binary we have no grant for.
 - So this repository ships no SELinux file; the image gets SELINUX=disabled.
   Revisit if Jolla publishes the policy as a package.
+- Consequence, found on the first boot (2026-10-06): without selinuxfs, Android 16's
+  servicemanager and vndservicemanager abort in Access::Access()
+  (`CHECK(selinux_status_open(true) >= 0)`, frameworks/native/cmds/servicemanager/Access.cpp:103)
+  and droid-hal-init restarts them every 5 s, class_restarting main/hal/early_hal each
+  time; no HAL registers, so there is no UI. The refs avoid it for servicemanager by
+  loading the policy and preload libselinux_stubs (mer-hybris/android_external_selinux_stubs,
+  in the hybris-23.2 manifest; hybris-boot builds it when */selinux_stubs exists) into
+  vndservicemanager and hwservicemanager. Here
+  `sparse/usr/libexec/droid-hybris/system/etc/init/servicemanager_selinux_stubs.rc`
+  preloads it into all three, with Android 16's definitions (hwservicemanager is
+  /system/system_ext/bin/hwservicemanager; pdx246's vendor has HIDL HALs: audio, bluetooth,
+  fingerprint, gatekeeper, keymaster, wifi). The name sorts after droid-hal's
+  servicemanager.rc, so "override" applies; droid-hal-init parses droid-hybris, /system,
+  /system_ext, /vendor in that order and drops the later definitions without "override".
 
 ### D10. Audio: hidl_compat through the hybris libhardware search path
 
@@ -413,11 +427,17 @@ qcom-charge-control-fixup files are not needed.
 ### D15. connman
 
 `etc/connman/main.conf.d/50-pdx246.conf` (Sailfish connman reads `main.conf.d`,
-sailfishos/connman src/main.c CONFIGMAINDIR). NetworkInterfaceBlacklist: connman's
-built-in defaults plus p2p, rmnet, rev_rmnet (zambezi main-custom.conf) and the
+sailfishos/connman src/main.c CONFIGMAINDIR). NetworkInterfaceBlacklist: the drop-in
+replaces the whole key, so it repeats the image's list (connman-configs-sailfish
+main.conf: ifb,p2p,usb,rmnet,rev_rmnet; "usb" covers usb-moded's usb0, 99-usb-moded-pdx246.ini)
+and connman's built-in defaults, plus p2p, rmnet, rev_rmnet (zambezi main-custom.conf) and the
 Ethernet-type devices this GKI kernel creates: gretap/erspan (CONFIG_NET_IPGRE=y),
 ip6gretap (CONFIG_IPV6_GRE=y), ifb (CONFIG_IFB=y) (LOS out obj/KERNEL_OBJ/.config), and
 rndis (IPA rndisipam, dev/vendor_dlkm.modules.load:251). TODO R7.
+First boots (2026-10-06): the first version left out "usb" (it was based on connman's
+built-in defaults only), and the USB debug network on usb0 lost its address mid-boot. With
+"usb" back, the next boot kept it. connman logs nothing about usb0 either way, so the link is
+inferred, not seen.
 
 ### D16. WLAN
 
@@ -794,6 +814,7 @@ The final contract all four adaptation repos follow (2026-10-04):
 | sparse/usr/bin/droid/wlan-driver-on.sh | new | header |
 | sparse/usr/libexec/usb-moded-configfs-setup.sh | new (written from init.qcom.usb.rc and usb-moded's configfs code; the ref's script not used) | header |
 | sparse/usr/libexec/droid-hybris/system/etc/init/disabled_services_device.rc | new (file name as in zambezi) | header |
+| sparse/usr/libexec/droid-hybris/system/etc/init/servicemanager_selinux_stubs.rc | derived from AOSP's servicemanager.rc, vndservicemanager.rc and hwservicemanager.rc (Android 16); setenv/override as in the refs' vndservicemanager.rc | header: The Android Open Source Project + user, Apache-2.0 |
 | sparse/usr/libexec/droid-hybris/system/lib64/hw/audio.primary.parrot.so | new symlink | REUSE.toml: user, Apache-2.0 |
 | sparse/usr/lib/systemd/system/dmsetup-dynparts.service | new | header |
 | sparse/usr/lib/systemd/system/{system_root,system,system_ext,product,vendor,vendor_dlkm,odm}.mount | new (ref units not used) | header |

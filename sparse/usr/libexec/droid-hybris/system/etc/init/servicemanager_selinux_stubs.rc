@@ -1,0 +1,73 @@
+# SPDX-FileCopyrightText: The Android Open Source Project
+# SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
+# SPDX-License-Identifier: Apache-2.0
+#
+# Android's three service managers with libselinux_stubs preloaded.
+#
+# The image runs with SELinux disabled (NOTES.md D9), so selinuxfs is not
+# mounted and Android's libselinux has no selinuxfs mount point:
+# selinux_status_open() fails, and Android 16's servicemanager and
+# vndservicemanager abort in their constructor
+# (frameworks/native/cmds/servicemanager/Access.cpp,
+# CHECK(selinux_status_open(true) >= 0)). droid-hal-init restarts them every
+# 5 s and each restart class_restarts main, hal and early_hal, so no HAL ever
+# registers. hwservicemanager needs a context from getcon() in the same way
+# (system/hwservicemanager/AccessControl.cpp).
+#
+# libselinux_stubs (external/selinux_stubs, built by hybris-boot because the
+# tree has it) answers every check with "allowed". The 10 IV and 10 V ports
+# preload it the same way into vndservicemanager and hwservicemanager; they
+# load a policy, so their servicemanager needs no stubs.
+#
+# The definitions are Android 16's (servicemanager.rc as droid-hal packages
+# it, frameworks/native vndservicemanager.rc, system/hwservicemanager
+# hwservicemanager.rc) with "setenv LD_PRELOAD" and "override" added.
+# droid-hal-init parses this directory first, in name order, then /system,
+# /system_ext and /vendor (system/core init.cpp LoadBootScripts). This file
+# sorts after droid-hal's servicemanager.rc, so "override" replaces that
+# definition, and the later ones without "override" are dropped as duplicates
+# (service_parser.cpp).
+
+service servicemanager /system/bin/servicemanager
+    setenv LD_PRELOAD /usr/libexec/droid-hybris/system/lib64/libselinux_stubs.so
+    class core animation
+    user system
+    group system readproc
+    critical
+    file /dev/kmsg w
+    onrestart setprop servicemanager.ready false
+    onrestart restart --only-if-running apexd
+    onrestart class_restart --only-enabled main
+    onrestart class_restart --only-enabled hal
+    onrestart class_restart --only-enabled early_hal
+    task_profiles ProcessCapacityHigh
+    shutdown critical
+    override
+
+service vndservicemanager /vendor/bin/vndservicemanager /dev/vndbinder
+    setenv LD_PRELOAD /usr/libexec/droid-hybris/system/lib64/libselinux_stubs.so
+    class core
+    user system
+    group system readproc
+    file /dev/kmsg w
+    task_profiles ServiceCapacityLow
+    onrestart class_restart main
+    onrestart class_restart hal
+    onrestart class_restart early_hal
+    shutdown critical
+    override
+
+service hwservicemanager /system/system_ext/bin/hwservicemanager
+    setenv LD_PRELOAD /usr/libexec/droid-hybris/system/lib64/libselinux_stubs.so
+    user system
+    disabled
+    group system readproc
+    critical
+    onrestart setprop hwservicemanager.ready false
+    onrestart class_restart --only-enabled main
+    onrestart class_restart --only-enabled hal
+    onrestart class_restart --only-enabled early_hal
+    task_profiles ServiceCapacityLow HighPerformance
+    class animation
+    shutdown critical
+    override
