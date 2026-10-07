@@ -548,15 +548,31 @@ the ADSP sensor domain. The drop-in waits up to 45 s for ISensors/default (binde
 
 ### D18. NFC
 
-`etc/libncicore.conf`, `[Configuration] Technologies = A,B,F` = libncicore's default
-(mer-hybris/libncicore src/nci_sm.c NCI_TECH_DEFAULT), written out as the one place to
-tune; the 10 V port limits to A,B. nfcd off by default comes from dcd.
+`etc/libncicore.conf`, `[Configuration] Technologies = A,B` as on the 10 IV/10 V. nfcd off by
+default comes from dcd.
 
-Fifth boot (2026-10-06): the SN220 opened, but RF discovery was rejected (RF_DISCOVER_RSP
-status 1) with A,B,F. Now `Technologies = A,B` as on the 10 IV/10 V. Sixth boot: still
-RF_DISCOVER_RSP error 1, so not the technologies. Next lead: the NXP HAL log before it
-('phNxpNciHal_getChipInfoInFwDnldMode read status error', i2c -107 'maybe in standby'), and nfcd
-talking android.hardware.nfc@1.0::INfc to a @1.2 HAL.
+Fifth and sixth boot (2026-10-06): the SN220 opened, but RF discovery was rejected
+(RF_DISCOVER_RSP status 1) with A,B,F and with A,B. Cause (2026-10-07): libncicore's
+reader/writer mode always adds active-poll entries (ActivePollA 0x03, and 0x05 with F), which
+exist only for NFC-DEP. The SN220 lists no NFC-DEP interface in CORE_INIT_RSP (the HAL logs
+'NFC-DEP Removal is not requored'), and Android here polls passive A/B/F/V only
+(POLLING_TECH_MASK=0x0F). Proof: `Technologies = B` (passive only) was accepted, A,B was not.
+`libncicore.conf` has no key for passive-only A, so the fix is in libncicore.
+
+Fix: local libncicore 1.2.0 (hybris/mw/libncicore, branch pdx246-1.2.0, commit 098175c):
+reader/writer mode polls `A_POLL_PASSIVE | B_POLL | F_POLL_PASSIVE | V_POLL`. The pattern
+requires `libncicore >= 1.2.0` (adaptation-common has 1.1.31). SDK step `nfc`. With A,B the
+SN220 accepts discovery (mode 2) and an ISO-DEP card was detected (2026-10-07).
+
+Also built: nfcd-binder-plugin 1.2.0 (branch pdx246-1.2.0, commit a9598eb). Upstream sends
+HIDL `coreInitialized` without its `vec<uint8_t>` argument; the patch passes the captured
+CORE_INIT_RSP, as Android does. It is unverified on the device: `nfcd -vv` shows the plugin
+never calls `coreInitialized` (nor `prediscover`) on power-up, because libncicore's next state
+is already RFST_DISCOVERY when it reaches RFST_IDLE, and the adapter only calls them at
+IDLE/IDLE. So the NXP HAL's core_initialized step (libnfc-nxp.conf, RF blocks) does not run
+under Sailfish; the controller keeps the configuration Android stored in its flash
+(CORE_RESET_NTF Configuration Status 0 = kept), which is enough for reader mode. The patch is
+harmless and stays as an upstream candidate. Card emulation is untested.
 
 ### D19. CSD, camera, ssu
 

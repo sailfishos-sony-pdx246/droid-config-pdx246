@@ -143,6 +143,11 @@ Requires: ofono-binder-plugin-ext-qti >= 0.1.1
 # These plugins are mutually exclusive, you need to pick one:
 # pdx246: NXP SN-series behind android.hardware.nfc_snxxx@1.2-service
 Requires: nfcd-binder-plugin
+# Local build of mer-hybris/libncicore 1.2.0 that polls only in passive modes
+# for reader/writer (hybris/mw/libncicore, branch pdx246-1.2.0): the SN220
+# rejects RF_DISCOVER_CMD with active-poll entries (no NFC-DEP). The
+# adaptation-common repo has 1.1.31. NOTES.md D18.
+Requires: libncicore >= 1.2.0
 #Requires: nfcd-pn54x-plugin
 
 %description -n patterns-sailfish-device-adaptation-pdx246
