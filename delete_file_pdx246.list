@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
+# SPDX-License-Identifier: Apache-2.0
+#
+# Files from droid-configs-device sparse-16 that pdx246 must not ship.
+# Read by droid-configs.inc (delete_files, device list), which skips '#' lines.
+#
+# sparse-16 makes dummy_netd serve only the AIDL netd (--device=/dev/binder).
+# This vendor's netmgrd waits for HIDL android.system.net.netd@1.1::INetd/default
+# (libnetmgr_utils.so); without this file dummy_netd serves it on /dev/hwbinder.
+# Without it netmgrd never finishes init, DSI never initializes, and qcril
+# answers every setupDataCall with cause 0x1004 (NOTES D22).
+/etc/sysconfig/dummy_netd

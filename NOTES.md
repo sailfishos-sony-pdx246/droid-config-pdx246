@@ -372,6 +372,17 @@ pdx246 has it only in the per-SKU ODM manifests, so it would use "af" and qcrild
 IQcRilAudioCallback (vsid, call_state) would never reach the audio HAL. The user unit drop-in
 `usr/lib/systemd/user/pulseaudio.service.d/50-pdx246-qti-passthrough.conf` sets
 AUDIOSYSTEM_PASSTHROUGH_TYPE=qti (the module's setenv does not overwrite it).
+Call volume (sixth boot, 2026-10-07): Sailfish never sent a voice-call volume to the HAL (no
+adev_set_voice_volume in logcat; AHAL "session volume is not set"), so PAL ran every call at its
+default, the loudest voice level, and the volume keys did nothing in calls; this may also be why
+the far end hears echo on speakerphone (unproven: routing, the nn-sm speaker-mic ACDB profile and
+the DSP-internal EC reference match Android). Cause: dcd 8d935d8 loads module-meego-mainvolume
+with virtual_stream=false, which expects pulseaudio-modules-droid >= 14.2.107 (own voice volume
+stream); we pin 14.2.106 for SFOS 5.1, so no media.role=phone sink-input exists and droid-sink
+never calls set_voice_volume. `sparse/etc/pulse/default_sailfish.pa` is dcd's file with
+virtual_stream=true restored (REUSE.toml: PulseAudio developers, Jolla, user; LGPL-2.1-or-later).
+Drop it when moving to pulseaudio-modules-droid >= 14.2.107 (and upgrade nemo at the same time:
+nemo >= 14.2.33 ignores virtual_stream). Expect calls to start quieter (phone role -15 dB).
 
 ### D11. disabled_services: sparse-16 file kept, two device entries
 
@@ -623,15 +634,15 @@ links; the UFS BSG node for the boot HAL from dcd 997-droid-bsg.rules.
   img-recovery %post then only logs that the script is missing
   (initrd .inc:415, `|| :`).
 
-### D22. No delete_file_pdx246.list; slot a marked once the boot HAL runs
+### D22. delete_file_pdx246.list (dummy_netd); slot a marked once the boot HAL runs
 
 Every sparse-16 default fits pdx246: disabled_services.rc and ecclist.rc (D11), gbinder.conf
 ApiLevel 36 (Android 16), droid-bootctl (pdx246 has the AIDL boot HAL; bootctl is in
 hybris-boot's HYBRIS_COMMON_ANDROID8_TARGETS, `$ANDROID_ROOT/hybris/hybris-boot/Android.mk:379`),
 wait_for_keymint (LOS out vendor/etc/vintf/manifest/android.hardware.security.keymint-service-qti.xml:
-IKeyMintDevice/default), dummy_netd, ril_subscription.conf/dual-sim.conf (inert without
-the ril binder transport plugin; the ref deletes dual-sim and dummy_netd, wrongly for
-pdx246), mce and fpd settings. `boot/flashing-README.txt` (a one-line pointer to Jolla's
+IKeyMintDevice/default), ril_subscription.conf/dual-sim.conf (inert without
+the ril binder transport plugin; the ref deletes dual-sim, wrongly for pdx246, which runs
+dsds), mce and fpd settings. `boot/flashing-README.txt` (a one-line pointer to Jolla's
 install page) is replaced by this repository's file at the same path instead.
 
 Slot marking: sparse-16's droid-bootctl.service runs After=start-user-session.service
@@ -658,6 +669,18 @@ UFS partitions only (DEVPATH match), and `droid-bootctl.service.d/50-pdx246-time
 gives droid-bootctl 120 s. With by-name present, apexd's /dev/block/by-name/userdata and
 thermal-engine-v2's limits-cdsp (read-only) resolve as on Android. GPT on that boot:
 boot_a attrs 0x0037... (active, retry 6, not successful), boot_b 0x00f2... (unbootable).
+
+Correction (2026-10-07): dummy_netd's sysconfig MUST be deleted, as both refs do.
+`delete_file_pdx246.list` removes /etc/sysconfig/dummy_netd. sparse-16's file starts dummy_netd
+with --device=/dev/binder (AIDL netd only). This vendor's netmgrd waits, with no timeout, for the
+HIDL android.system.net.netd@1.1::INetd/default (libnetmgr_utils.so; lshal: declared, no server),
+so it never finishes init, DSI never initializes, and qcril's CallManager answers every
+setupDataCall with OEM_DCFAILCAUSE_4 (0x1004) before reading the request ("DSI init not yet
+completed"; disassembly of libqcrilDataModule.so). That was the mobile-data failure on the sixth
+boot. The 10 IV hit the same (it broke their VoLTE; IRC). Without the file dummy_netd runs on
+/dev/hwbinder and serves HIDL netd@1.1. Risk to test: once DSI works, the modem may register
+VoLTE without an oFono IMS plugin (TODO B4), so incoming calls/SMS over IMS would not reach
+oFono; test incoming calls and SMS after the fix.
 
 ### D23. Not taken from the ref (and why)
 
@@ -729,6 +752,25 @@ verifiers (`notes/analysis/boot3-diagnosis-2026-10-06/`):
   (init.rc's definitions, `override`, without reboot_on_failure), so they still run if conscrypt
   is ever active. That boot did reach class hal/core/main/late_start: composer and allocator
   started at 16.2 s, the linker config was regenerated at 15.9 s.
+
+
+### D25. GNSS: geoclue-providers-hybris 0.3.1 with an AIDL version check (2026-10-07)
+
+pdx246's vendor android.hardware.gnss-aidl-service-qti serves AIDL android.hardware.gnss.IGnss
+**V1** (getInterfaceVersion = 1, hash 10839720..., linked against gnss-V1-ndk) and HIDL
+gnss@1.0-2.1 in the same process. AIDL V1 has only setCallback, close and the extension getters;
+start, setPositionMode (call 20) and injectLocation (call 17) exist from V2 on. SFOS 5.1.0.11
+ships geoclue-provider-hybris-binder 0.3.0, which uses AIDL whenever IGnss/default is registered,
+so setPositionMode failed ("GNSS set position mode failed"), positioning never started, and
+location pages got a cell/Wi-Fi estimate from geoclue-provider-mlsdb (user test, sixth boot).
+Android itself uses HIDL gnss@2.1 on V1 vendors (frameworks/base services/core/jni/gnss/Gnss.cpp).
+Fix: local build of mer-hybris/geoclue-providers-hybris (hybris/mw/geoclue-providers-hybris,
+branch pdx246-0.3.1 = tag 0.3.1, which adds GEOCLUE_HYBRIS_DISABLE_AIDL, plus commit 6ba81f2:
+isSupported() asks getInterfaceVersion and falls back to HIDL below V2; upstream candidate).
+build-packages-sdk.sh step `geoclue`; the adaptation pattern requires
+geoclue-provider-hybris-binder >= 0.3.1. No environment drop-in needed. Side note: xtra-daemon
+cannot resolve DNS (no netd DNS proxy under hybris), so assistance data is missing and the first
+fix is slower.
 
 ---
 
@@ -966,6 +1008,8 @@ The final contract all four adaptation repos follow (2026-10-04):
 | sparse/lib/udev/rules.d/99-pdx246-by-name.rules | new | header |
 | sparse/usr/libexec/droid-hybris/system/etc/init/odsign_hybris.rc | new | header |
 | sparse/usr/lib/systemd/user/pulseaudio.service.d/50-pdx246-qti-passthrough.conf | new | header |
+| delete_file_pdx246.list | new (device delete list read by droid-configs.inc) | header |
+| sparse/etc/pulse/default_sailfish.pa | copy of dcd's file, virtual_stream=true (D10) | REUSE.toml: PulseAudio developers, Jolla Ltd., user; LGPL-2.1-or-later |
 | sparse/usr/lib/systemd/system/pdx246-mark-slot.service | new (runs sparse-16's droid-bootctl.sh earlier) | header |
 | sparse/usr/lib/systemd/system/multi-user.target.wants/pdx246-mark-slot.service | new symlink | REUSE.toml |
 | sparse/usr/share/csd/settings.d/hw-settings.ini | derived from mer-hybris/droid-config-sony-murray@83c7d48:sparse/usr/share/csd/settings.d/10-hw-settings.ini (Jolla Ltd.) | header: Jolla Ltd. + user, GPL-2.0-only, "Based on" line (`;` comments) |

@@ -62,3 +62,13 @@ SPDX-License-Identifier = "GPL-2.0-only"
 path = "sparse/etc/task_profiles.json"
 SPDX-FileCopyrightText = "The Android Open Source Project"
 SPDX-License-Identifier = "Apache-2.0"
+
+# PulseAudio startup script, a copy of mer-hybris droid-hal-configs (dcd)
+# sparse/etc/pulse/default_sailfish.pa (PulseAudio's default.pa adapted by
+# Jolla; its in-file notice is the PulseAudio LGPL text without a named
+# holder) with module-meego-mainvolume's virtual_stream=true restored and a
+# comment explaining why.
+[[annotations]]
+path = "sparse/etc/pulse/default_sailfish.pa"
+SPDX-FileCopyrightText = ["The PulseAudio Developers", "Jolla Ltd.", "Johannes Meyer zum Alten Borgloh"]
+SPDX-License-Identifier = "LGPL-2.1-or-later"

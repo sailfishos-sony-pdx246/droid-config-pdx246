@@ -120,7 +120,11 @@ Requires: jolla-devicelock-daemon-encsfa
 #Requires: sailfish-device-encryption
 
 # For GPS
-Requires: geoclue-provider-hybris
+# Local build of mer-hybris/geoclue-providers-hybris 0.3.1 with an AIDL
+# interface-version check (hybris/mw/geoclue-providers-hybris, branch
+# pdx246-0.3.1): pdx246's vendor serves AIDL IGnss V1, which lacks start and
+# setPositionMode, and 0.3.0 used it anyway (NOTES.md D25).
+Requires: geoclue-provider-hybris-binder >= 0.3.1
 
 # For FM radio on some QCOM devices
 #Requires: qt5-qtmultimedia-plugin-mediaservice-irisradio
