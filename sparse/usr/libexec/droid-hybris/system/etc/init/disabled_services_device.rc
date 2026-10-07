@@ -43,3 +43,13 @@ service vendor.dataqti /vendor/bin/qti_HYBRIS_DISABLED
 # bpfloader (which carries reboot_on_failure). Never mark these stubs updatable.
 service adbd /apex/com.android.adbd/bin/adbd_HYBRIS_DISABLED
     user root
+
+# The IMS daemon (vendor imsdaemon.rc, class main). Once mobile data worked
+# (seventh boot) it brought up the IMS PDN and the modem registered VoLTE.
+# Sailfish has no client for the vendor's AIDL-only IMS radio interface
+# (vendor.qti.hardware.radio.ims.IImsRadio), so SMS delivered over IMS were never
+# acknowledged there: they arrived 30-60 s late and the network kept resending
+# them. Without it calls use CS fallback and SMS go over SGs, as before.
+# Interim until an IMS client exists (NOTES.md TODO B4).
+service vendor.imsdaemon /vendor/bin/imsdaemon_HYBRIS_DISABLED
+    user root

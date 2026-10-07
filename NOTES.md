@@ -383,6 +383,7 @@ never calls set_voice_volume. `sparse/etc/pulse/default_sailfish.pa` is dcd's fi
 virtual_stream=true restored (REUSE.toml: PulseAudio developers, Jolla, user; LGPL-2.1-or-later).
 Drop it when moving to pulseaudio-modules-droid >= 14.2.107 (and upgrade nemo at the same time:
 nemo >= 14.2.33 ignores virtual_stream). Expect calls to start quieter (phone role -15 dB).
+Confirmed on the seventh boot: the volume keys work in calls and the speakerphone echo is gone.
 
 ### D11. disabled_services: sparse-16 file kept, two device entries
 
@@ -414,6 +415,10 @@ nemo >= 14.2.33 ignores virtual_stream). Expect calls to start quieter (phone ro
   (service_parser.cpp:710-713), the same way sparse-16's non-updatable `bpfloader` stub keeps
   tethering's `bpfloader` (netbpfload.35rc: `reboot_on_failure reboot,bpfloader-failed`,
   `override`) out. Never mark either stub updatable.
+- `vendor.imsdaemon` (2026-10-07, interim): once data worked, imsdaemon brought up the IMS PDN
+  and the modem registered VoLTE; with no client for the AIDL-only vendor IMS interface, SMS over
+  IMS were never acknowledged there (30-60 s late, resent repeatedly). Stubbed until an IMS client
+  exists (TODO B4); calls use CS fallback and SMS go over SGs.
 
 ### D12. USB (usb-moded)
 
