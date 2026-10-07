@@ -361,6 +361,18 @@ Why this works and the ref's bind mount would not:
   id prefix `parrot*` (dtbo strings: parrot-qrd-snd-card, parrot-qrd-sku1-snd-card;
   ALSA id = alphanumerics, 15 chars). Only matters once udev-detect is loaded.
 
+Fifth boot (2026-10-06): no droid card ("Failed to parse any configuration"):
+pulseaudio-modules-droid searches only /odm/etc, /vendor/etc/audio, /vendor/etc and
+/system/etc (src/common/droid-config.c), and pdx246's vendor has the policy only as
+/vendor/etc/audio/sku_parrot/audio_policy_configuration.xml (absolute xi:includes, all
+present). `arm_droid_card_custom.pa` now passes `config=` with that path.
+Call audio (round-5 review, 2026-10-07): module-droid-hidl picks the audiosystem-passthrough
+type "qti" only if IQcRilAudio is in /vendor/etc/vintf/manifest.xml or /vendor/manifest.xml;
+pdx246 has it only in the per-SKU ODM manifests, so it would use "af" and qcrild's
+IQcRilAudioCallback (vsid, call_state) would never reach the audio HAL. The user unit drop-in
+`usr/lib/systemd/user/pulseaudio.service.d/50-pdx246-qti-passthrough.conf` sets
+AUDIOSYSTEM_PASSTHROUGH_TYPE=qti (the module's setenv does not overwrite it).
+
 ### D11. disabled_services: sparse-16 file kept, two device entries
 
 - sparse-16's disabled_services.rc already has `user root` on every entry (Android
@@ -381,6 +393,16 @@ Why this works and the ref's bind mount would not:
 - Not disabled: vendor.audio-hal (D10), vendor.qti.vibrator (sibling droid-hal-version
   NOTES section 5 asks to keep it), vendor.usb-hal / vendor.usbgadget-hal (idle without
   the framework; the ref disabled vendor.usb-hal without a recorded reason).
+
+- `vendor.dataqti` (2026-10-07): /vendor/bin/qti, the USB RmNet/tethering helper (vendor
+  dataqti.rc, class main, disabled, no override), exited every 10 s on the fifth boot (244
+  restarts; with the default namespace ready it counted as updatable-crashing and made apexd
+  try reverts). Mobile data goes through netmgrd/ipacm and oFono.
+- `adbd` (2026-10-07): once the compressed APEXes are active (D24), com.android.adbd brings
+  `service adbd ... override`. This stub is not `updatable`, so init rejects the APEX override
+  (service_parser.cpp:710-713), the same way sparse-16's non-updatable `bpfloader` stub keeps
+  tethering's `bpfloader` (netbpfload.35rc: `reboot_on_failure reboot,bpfloader-failed`,
+  `override`) out. Never mark either stub updatable.
 
 ### D12. USB (usb-moded)
 
@@ -437,6 +459,14 @@ waits up to 10 s for it. `etc/mce/70-pdx246-hybris-features.ini` sets BackLight/
 mce-plugin-libhybris is built without libhybris (upstream `%bcond_with hybris`, LED code only),
 so those lookups only logged "undefined symbol mce_hybris_backlight_init".
 
+Charging limiter (sixth boot, 2026-10-07): not active. mce checks ControlPath once at startup
+(modules/charging.c mch_config_init), but /sys/class/battchg_ext only appears when battchg_ext's
+pmic_glink device probes after the ADSP is up (module loaded at 6.8 s, device at 17.2 s; the ADSP
+boot comes from droid-hal-init's early-boot). Waiting for it in mce's ExecStartPre held mce
+(and the user session behind it) for 10 s and still missed it, so that wait was removed again.
+TODO: a later trigger (e.g. a path/udev-triggered unit that re-applies the policy, or an mce
+change that re-probes ControlPath).
+
 ### D15. connman
 
 `etc/connman/main.conf.d/50-pdx246.conf` (Sailfish connman reads `main.conf.d`,
@@ -492,6 +522,12 @@ the ADSP sensor domain. The drop-in waits up to 45 s for ISensors/default (binde
 `etc/libncicore.conf`, `[Configuration] Technologies = A,B,F` = libncicore's default
 (mer-hybris/libncicore src/nci_sm.c NCI_TECH_DEFAULT), written out as the one place to
 tune; the 10 V port limits to A,B. nfcd off by default comes from dcd.
+
+Fifth boot (2026-10-06): the SN220 opened, but RF discovery was rejected (RF_DISCOVER_RSP
+status 1) with A,B,F. Now `Technologies = A,B` as on the 10 IV/10 V. Sixth boot: still
+RF_DISCOVER_RSP error 1, so not the technologies. Next lead: the NXP HAL log before it
+('phNxpNciHal_getChipInfoInFwDnldMode read status error', i2c -107 'maybe in standby'), and nfcd
+talking android.hardware.nfc@1.0::INfc to a @1.2 HAL.
 
 ### D19. CSD, camera, ssu
 
@@ -671,8 +707,20 @@ verifiers (`notes/analysis/boot3-diagnosis-2026-10-06/`):
   odsign.verification.done set `on post-fs`, because odsign has no job without ART/zygote and
   any hang in it would stop init's queue again. Not at post-fs-data: that action would queue
   behind init.rc's waiting one.
-- Still open: the 25 compressed APEXes (.capex: art, conscrypt, media.swcodec, ...) are not
-  activated (/data/apex/decompressed empty); only the 11 plain .apex are.
+- The compressed APEXes (26 .capex: art, conscrypt, media.swcodec, tethering, adbd, ...) were not
+  activated: apexd decompressed each one and then deleted it, because
+  OpenAndValidateDecompressedApex (system/apex apexd/apexd.cpp) requires a staging_data_file
+  SELinux label, and with SELinux disabled getfilecon() fails with ENODATA. Consequence (fifth
+  boot): no media.swcodec, so the Codec2 "software" store declared in both VINTF manifests never
+  registered and mediaserver's codec list hung, and with it every GStreamer client (camera,
+  voicecall-manager, ngfd). Fix (2026-10-07): system/apex hybris-23.2 commit "(hybris) Skip the
+  SELinux context check of decompressed APEXes without SELinux". What the newly active APEXes
+  bring (audited from LOS out apex/*/etc): media.swcodec (class main, wanted); tethering's
+  bpfloader override with reboot_on_failure, rejected because sparse-16's stub is
+  non-updatable; adbd override, rejected by our stub (D11); ot-daemon, artd, art_boot (exec from
+  init.rc), mainline aconfigd, wpa_supplicant_mainline, media.transcoding, uprobestats: all
+  disabled or exec'd without reboot_on_failure; the conscrypt BoringSSL self-test runs without
+  reboot_on_failure (boringssl_apex_hybris.rc).
 - Fourth boot (2026-10-06): with init no longer stuck, the boot looped. Every boot ended at
   ~17.8 s with `Got shutdown_command 'reboot,boringssl-self-check-failed'`: once
   apexd.status=ready, init.boringssl.zygote64_32.rc runs `exec_start boringssl_self_test_apex32`,
@@ -917,6 +965,7 @@ The final contract all four adaptation repos follow (2026-10-04):
 | sparse/usr/libexec/droid-hybris/system/etc/init/boringssl_apex_hybris.rc | derived from AOSP init.rc service definitions (D24) | header: The Android Open Source Project + user, Apache-2.0 |
 | sparse/lib/udev/rules.d/99-pdx246-by-name.rules | new | header |
 | sparse/usr/libexec/droid-hybris/system/etc/init/odsign_hybris.rc | new | header |
+| sparse/usr/lib/systemd/user/pulseaudio.service.d/50-pdx246-qti-passthrough.conf | new | header |
 | sparse/usr/lib/systemd/system/pdx246-mark-slot.service | new (runs sparse-16's droid-bootctl.sh earlier) | header |
 | sparse/usr/lib/systemd/system/multi-user.target.wants/pdx246-mark-slot.service | new symlink | REUSE.toml |
 | sparse/usr/share/csd/settings.d/hw-settings.ini | derived from mer-hybris/droid-config-sony-murray@83c7d48:sparse/usr/share/csd/settings.d/10-hw-settings.ini (Jolla Ltd.) | header: Jolla Ltd. + user, GPL-2.0-only, "Based on" line (`;` comments) |

@@ -8,7 +8,10 @@
 # the symlink /usr/libexec/droid-hybris/system/lib64/hw/audio.primary.parrot.so),
 # which forwards to the vendor's HIDL audio service. Volume is applied in
 # PulseAudio, as on the other hidl_compat ports.
-# TODO(runtime): the arguments depend on the pulseaudio-modules-droid version
-# (14.2.106 is the one recommended for Sailfish OS 5.1); check "pactl list
-# modules" and the journal for "Failed to parse module arguments".
-load-module module-droid-card rate=48000 hw_volume=false
+#
+# config=: pulseaudio-modules-droid looks for audio_policy_configuration.xml
+# only in /odm/etc, /vendor/etc/audio, /vendor/etc and /system/etc
+# (src/common/droid-config.c). pdx246's vendor keeps it per SKU, in
+# /vendor/etc/audio/sku_parrot/ (its xi:include paths are absolute); without
+# this the card did not load ("Failed to parse any configuration", fifth boot).
+load-module module-droid-card rate=48000 hw_volume=false config=/vendor/etc/audio/sku_parrot/audio_policy_configuration.xml

@@ -28,3 +28,18 @@ service iddd /vendor/bin/iddd_HYBRIS_DISABLED
 # /sys/kernel/tracing. It aborted every 5 s on the third boot.
 service vendor.atrace-hal-1-0 /vendor/bin/hw/android.hardware.atrace@1.0-service_HYBRIS_DISABLED
     user root
+
+# QTI's /vendor/bin/qti (vendor dataqti.rc, class main), the USB RmNet /
+# tethering helper of the Android data stack; mobile data itself goes through
+# netmgrd/ipacm and oFono. It exited every 10 s on the fifth boot (244
+# restarts).
+service vendor.dataqti /vendor/bin/qti_HYBRIS_DISABLED
+    user root
+
+# adbd from the com.android.adbd APEX ("override", disabled). Once the
+# compressed APEXes are active, its definition would be added; this stub is not
+# "updatable", so init rejects the APEX override ("cannot update a
+# non-updatable service"), like sparse-16's bpfloader stub does for tethering's
+# bpfloader (which carries reboot_on_failure). Never mark these stubs updatable.
+service adbd /apex/com.android.adbd/bin/adbd_HYBRIS_DISABLED
+    user root
