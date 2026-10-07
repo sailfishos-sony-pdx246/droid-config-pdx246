@@ -126,6 +126,13 @@ Requires: jolla-devicelock-daemon-encsfa
 # setPositionMode, and 0.3.0 used it anyway (NOTES.md D25).
 Requires: geoclue-provider-hybris-binder >= 0.3.1
 
+# VoLTE and SMS over IMS: AIDL IMS client for oFono, local build of
+# rinigus/ofono-binder-plugin-ext-qti 0.1.1+aidl (hybris/mw, branch
+# pdx246-0.1.1-aidl). pdx246's vendor IMS radio interface is AIDL only
+# (vendor.qti.hardware.radio.ims.IImsRadio V12). It ships
+# /etc/ofono/binder.d/qti.conf (extPlugin = qti). NOTES.md D13.
+Requires: ofono-binder-plugin-ext-qti >= 0.1.1
+
 # For FM radio on some QCOM devices
 #Requires: qt5-qtmultimedia-plugin-mediaservice-irisradio
 #Requires: jolla-mediaplayer-radio

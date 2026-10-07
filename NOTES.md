@@ -415,10 +415,10 @@ Confirmed on the seventh boot: the volume keys work in calls and the speakerphon
   (service_parser.cpp:710-713), the same way sparse-16's non-updatable `bpfloader` stub keeps
   tethering's `bpfloader` (netbpfload.35rc: `reboot_on_failure reboot,bpfloader-failed`,
   `override`) out. Never mark either stub updatable.
-- `vendor.imsdaemon` (2026-10-07, interim): once data worked, imsdaemon brought up the IMS PDN
-  and the modem registered VoLTE; with no client for the AIDL-only vendor IMS interface, SMS over
-  IMS were never acknowledged there (30-60 s late, resent repeatedly). Stubbed until an IMS client
-  exists (TODO B4); calls use CS fallback and SMS go over SGs.
+- `vendor.imsdaemon` was stubbed for a few hours on 2026-10-07 (commit 6db12c3): once data worked,
+  imsdaemon brought up the IMS PDN and the modem registered on IMS; with no IMS client, SMS over IMS
+  were never acknowledged (30-60 s late, resent repeatedly). The stub was removed again when the
+  AIDL IMS client went in (D13); imsdaemon must run for VoLTE.
 
 ### D12. USB (usb-moded)
 
@@ -460,6 +460,19 @@ knows 1.0-1.5 (ofono-binder-plugin binder.conf sample, "versions 1.0 to 1.5"), a
 1.6 implements 1.5. Slots come from dcd binder.conf (slot1) and binder.d/dual-sim.conf
 (slot2), both kept (the ref deletes dual-sim; pdx246 is dsds). useNetworkScan as on
 the 10 IV/10 V ports (TODO R6).
+
+VoLTE / IMS (2026-10-07): the vendor's IMS radio interface is AIDL only
+(vendor.qti.hardware.radio.ims.IImsRadio/imsradio0,1, V12; no HIDL radio.ims@1.x), so the
+HIDL ofono-binder-plugin-ext-qti of the 10 IV/10 V cannot be used. The adaptation pattern pulls in
+`ofono-binder-plugin-ext-qti` >= 0.1.1: a local build of rinigus' AIDL branch (tag 0.1.1+aidl,
+f5bbe27; shipped by the Sony Nagara port; also merged into UBports' main), whose transaction codes
+and SMS parcels match V12 (disassembly of the vendor ndk library,
+notes/analysis/boot6-diagnosis-2026-10-07/wf-ims-research.md). It installs
+/etc/ofono/binder.d/qti.conf (extPlugin = qti). Tested (boot 10): IMS Registered/VoiceCapable/
+SmsCapable true on the eSIM slot; incoming and outgoing calls ring at once and run as
+call_type=LTE; incoming SMS arrive as 'incoming ims sms' and are acknowledged over IMS (no RIL
+copies, no repeats); outgoing SMS go over IMS. Not implemented in the plugin: conference calls,
+DTMF over IMS (falls back to IRadio; to test with a voicemail/IVR menu). No emergency-call tests.
 
 ### D14. mce charging control
 
