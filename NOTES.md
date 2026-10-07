@@ -776,6 +776,8 @@ build-packages-sdk.sh step `geoclue`; the adaptation pattern requires
 geoclue-provider-hybris-binder >= 0.3.1. No environment drop-in needed. Side note: xtra-daemon
 cannot resolve DNS (no netd DNS proxy under hybris), so assistance data is missing and the first
 fix is slower.
+Tested (2026-10-07): 'AIDL GNSS interface version 1 is below 2, using HIDL'; at an open window the
+hybris provider delivered a fix (accuracy level detailed, ~46 m), 50 satellites visible.
 
 ---
 
