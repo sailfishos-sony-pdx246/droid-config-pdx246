@@ -385,17 +385,18 @@ Drop it when moving to pulseaudio-modules-droid >= 14.2.107 (and upgrade nemo at
 nemo >= 14.2.33 ignores virtual_stream). Expect calls to start quieter (phone role -15 dB).
 Confirmed on the seventh boot: the volume keys work in calls and the speakerphone echo is gone.
 
-### D11. disabled_services: sparse-16 file kept, two device entries
+### D11. disabled_services: sparse-16 file kept, device stubs in disabled_services_device.rc
 
 - sparse-16's disabled_services.rc already has `user root` on every entry (Android
   16 init errors without a user only when ro.vendor.api_level > 202404,
   service_parser.cpp:684-693; pdx246 reports ro.vendor.api_level 34,
   device-data adb-readonly.txt).
-- Added in a separate `disabled_services_device.rc` (zambezi's pattern): `iddd`
-  only. It is Sony's diagnostics daemon (LOS out vendor/etc/init/init.sony.idd.rc),
-  its definition has no `override`, so the stub parsed first wins; the 10 V port
+- Added in a separate `disabled_services_device.rc` (zambezi's pattern): `iddd`,
+  Sony's diagnostics daemon (LOS out vendor/etc/init/init.sony.idd.rc). Its
+  definition has no `override`, so the stub parsed first wins; the 10 V port
   disables it too (ref disabled_services.rc:1). Optional: drop the line if Sony
-  services complain.
+  services complain. The same file also stubs vendor.atrace-hal-1-0, vendor.dataqti,
+  adbd, usbd and vendor.usbgadget-hal (below).
 - `vendor.atrace-hal-1-0` (added after the third boot, 2026-10-06): its constructor
   CHECKs that tracefs is mounted (hardware/interfaces atrace/1.0/default
   AtraceDevice.cpp:66-74). Nothing mounts it: droid-hal-init's mount builtin is a no-op
@@ -403,8 +404,19 @@ Confirmed on the seventh boot: the volume keys work in calls and the speakerphon
   /sys/kernel/tracing. It aborted every 5 s; nothing in Sailfish OS uses it.
 - odsign gets its own file, `odsign_hybris.rc` (D24).
 - Not disabled: vendor.audio-hal (D10), vendor.qti.vibrator (sibling droid-hal-version
-  NOTES section 5 asks to keep it), vendor.usb-hal / vendor.usbgadget-hal (idle without
-  the framework; the ref disabled vendor.usb-hal without a recorded reason).
+  NOTES section 5 asks to keep it), vendor.usb-hal (QTI IUsb, vendor/qcom/opensource/usb/
+  hal/Usb.cpp: its g1 and glue writers run only on binder client calls: the uevent thread
+  started by setCallback (UDC bind on a UDC "add" uevent, MaxPower 0 under USB-PD),
+  enableUsbData (g1/UDC "none" or rebind) and resetUsbPort (glue mode). No client exists
+  under Sailfish OS; stub it if logcat from android.hardware.usb-service.qti ever shows
+  "creating thread", "Binding UDC", "enableUsbData" or "resetUsbPort").
+- `usbd` and `vendor.usbgadget-hal` (2026-10-08, usb-moded switch, verified review
+  notes/analysis/usb-moded-review-2026-10-07/verify.md): usbd (/system/etc/init/usbd.rc,
+  class late_start, oneshot) asks the QTI gadget HAL for MTP about 10 s into boot; the HAL
+  then writes "none" to g1/UDC (an unbind in this kernel) and its own IDs (18d1:4ee1),
+  os_desc and device class into g1, which usb-moded owns here. The gadget HAL (class hal,
+  user system) had usbd as its only client. Both stubbed; the stubs win because
+  droid-hal-init parses this directory before /system and /vendor.
 
 - `vendor.dataqti` (2026-10-07): /vendor/bin/qti, the USB RmNet/tethering helper (vendor
   dataqti.rc, class main, disabled, no override), exited every 10 s on the fifth boot (244
@@ -427,30 +439,83 @@ Confirmed on the seventh boot: the volume keys work in calls and the speakerphon
   `function_rndis = rndis.usb0` (CONFIG_USB_CONFIGFS_RNDIS=y in the LineageOS
   kernel .config; usb-moded's default `rndis_bam.rndis` is a function this kernel
   does not have), network interface usb0. Keys and defaults from usb-moded
-  src/usb_moded-configfs.c (upstream source); keys and layout as in zambezi's
-  usb-moded-zambezi.ini, values from pdx246.
+  src/usb_moded-configfs.c and src/usb_moded-config.c ([android] idVendor) (upstream
+  source); keys and layout as in zambezi's usb-moded-zambezi.ini, values from pdx246.
 - usb-moded makes function directories but expects the gadget, strings and
   configs/b.1 to exist and does not mount configfs (same source). On pdx246 these
   come from init.qcom.usb.rc `on zygote-start` (LOS out vendor/etc/init/hw/init.qcom.usb.rc:52-126),
   and the hybris init.rc never triggers zygote-start (hybris-patches system/core
   0015:31-32). `usb-moded-configfs-setup.service` (Before=usb-moded, pulled in by a
   drop-in) creates them. Written new; the ref has a longer script for the same gap.
-- Peripheral-mode fallback (bring-up aid, to drop once the Type-C role switch is
-  shown to work, TODO R4): the UDC a600000.dwc3 appears only after the dwc3 glue is
-  put into peripheral mode (pdx246's init.recovery.qcom.rc:32-36 writes
-  `peripheral` to the glue's `mode` and then waits for the UDC). In normal boot that
-  is the Type-C role switch in the ADSP, at the end of an untested chain
-  (vendor_dlkm modules, vendor.modprobe, the boot_adsp write in
-  init.qti.kernel.rc:50, 74, then charger and role switch). If any link fails there
-  is no USB networking and no SSH on the first headless boots. So
-  usb-moded-configfs-setup.sh, after droid-hal-init, waits up to 30 s for
-  /sys/class/udc/a600000.dwc3; if it is absent, it writes `peripheral` to
-  /sys/bus/platform/devices/a600000.ssusb/mode and logs that to the journal. This
-  disables USB host/OTG until the next boot. The service runs before usb-moded, so
-  usb-moded finds the UDC; TimeoutStartSec=90 covers the waits. This is the
-  running-OS half of droid-hal-img-boot-pdx246's contract (its recovery initrd
-  does the same write for the debug image).
-- extcon: unknown (TODO D1); without it usb-moded follows the `usb` power supply.
+- Peripheral-mode fallback (bring-up aid, to drop once R4 is settled): runtime role
+  switching through ucsi_glink is verified (dwc3-msm IPC log DEVICE->NONE->DEVICE on a
+  replug, notes/analysis/usb-moded-review-2026-10-07/verify.md issue 10), but no boot yet
+  has shown the UDC a600000.dwc3 appearing without any mode write (the debug aid writes
+  `peripheral` on every boot). pdx246's init.recovery.qcom.rc:32-36 writes `peripheral` to
+  the glue's `mode` and then waits for the UDC. The UDC is created by
+  the glue's first role event: the Type-C role switch (ucsi_glink sets a role when it
+  registers its port, also without a cable) or a write to the glue's mode. ucsi_glink
+  and the charger's `usb` power supply both come up with the ADSP, 2-11 s after
+  droid-hal-init in the boots seen so far. So usb-moded-configfs-setup.sh waits up to
+  30 s for /sys/class/udc/a600000.dwc3, but no longer than 3 s after the `usb` power
+  supply has appeared; if the UDC is still absent and the glue is not in host mode (OTG
+  device attached), it writes `peripheral` to /sys/bus/platform/devices/a600000.ssusb/mode
+  and logs it. The write is a one-off role change that the next Type-C event overrides
+  (it does not disable OTG until reboot, as an earlier version said). This is the
+  running-OS half of droid-hal-img-boot-pdx246's contract (its recovery initrd does the
+  same write for the debug image).
+- The script then waits up to 30 s for /sys/class/power_supply/usb: usb-moded picks its
+  charger device once at startup and ignores later "add" events; without `usb` it guesses
+  another supply (ucsi_glink's ucsi-source-psy reports TYPE=USB for any partner, so a wall
+  charger would look like a PC). TimeoutStartSec=120 covers all waits. If the supply is
+  still missing after that (ADSP later than about 65 s), usb-moded finds no charger device
+  (extcon tracking is off, see below) and exits; `usb-moded.service.d/51-pdx246-retry.conf`
+  (StartLimitIntervalSec=0, RestartSec=5) keeps restarting it until the supply exists,
+  instead of the default start limit leaving it failed for the boot.
+- Charging from a PC (2026-10-08, confirmed with the debug gadget): configs/b.1 starts at
+  MaxPower = CONFIG_USB_GADGET_VBUS_DRAW (2 mA), and the charger takes it as its input
+  limit from a PC ("msm-usb-hsphy: Avail curr from USB = 2", input_current_limit=0). Android
+  writes 900 (init.qcom.usb.rc:44, 164). The ini sets `gadget_max_power = 900` (usb-moded
+  writes it once at startup) and the script writes 900 before that; the kernel caps it at
+  500 mA on high speed.
+- `max_speed = high-speed` (script): buteo-mtp 0.9.12 sends no SuperSpeed descriptors, and
+  without them the kernel offers no configuration on a SuperSpeed link, so MTP would not
+  enumerate on a USB 3 port.
+- No chown of g1 to system:usb (Android does that for its framework): without SELinux, the
+  vendor USB HALs running as system could then rewrite or unbind it; usb-moded runs as root.
+- `[android] idVendor = 0x2931` (Jolla's vendor ID). Product IDs: 0a02 developer
+  (developer_mode-android.ini) and 0a07 MTP (mtp_mode-droid.ini) come from the mode files;
+  0afe is hard-coded in usb-moded (configfs_set_charging_mode) and is used for charging, the
+  charging fallback (a locked phone), dedicated charger and undefined. A host forwarding
+  filter needs 2931:0a02, 2931:0a07 and 2931:0afe. usb-moded has no default vendor ID (0000
+  otherwise). Keep the 0x: usb-moded writes the text raw and the kernel parses it with base 0.
+- `[udev] extcon_tracking = 0`: usb-moded tracks every extcon by default (without
+  extcon_path it reads all of them at startup in devpath order and accepts change events from
+  any of them), and a device without a USB= token clears the cached state. pdx246 has five
+  extcons. The two with a USB cable are the EUD's (the glue's DT extcon, updated only while
+  EUD is enabled) and the battery charger's (micro-USB only, qti_battery_charger.c:822-824);
+  both read USB=0 with a PC attached, which usb-moded turns into USB_DCP (a PC counted as a
+  wall charger). The others are the two ext-disp (DP/HDMI) and the wcd937x codec's, with no
+  USB token. The codec's devpath sorts last, so with tracking on, detection would only work
+  while the codec's extcon is registered before usb-moded starts and no EUD or charger
+  extcon has sent the last change event. extcon_tracking = 0 removes that dependence. Cable
+  detection uses the charger's `usb` power supply (TYPE USB/USB_CDP = PC, USB_DCP =
+  charger). Closes TODO D1.
+- SSH in developer mode: connman's INPUT policy is DROP and nothing opens usb0 (see D15), so
+  `etc/connman/firewall.d/50-pdx246-usb-firewall.conf` adds tcp/22, udp/67 (usb-moded's
+  udhcpd) and ping on usb0 in [General]. The bring-up aid's own drop-in never worked
+  ("usb+" is rejected by connman's rule validation; it only opened usb0 by its own
+  iptables -I).
+- `policies-setup.service.d/50-pdx246-after-usb-moded.conf`: After=usb-moded.service, so
+  policy-updater finds usb-moded on D-Bus. usb-moded has no D-Bus activation, and
+  policies-setup is only After=init-done; usb-moded can come up after init-done when
+  pmic_glink is late, because the setup service waits for the UDC and the charger's `usb`
+  power supply. In the boots measured so far it would have started before init-done. (With
+  usb-moded masked, boot 6 logged "Failed to update USB mode whitelist ... ServiceUnknown".)
+- Lock code: usb-moded keeps -r (rescue mode: developer mode without an unlock) only if it
+  starts before init-done with the PC attached, and drops the latch on unplug. Otherwise a
+  locked phone gets charging_only_fallback (2931:0afe) and has no SSH over USB until it is
+  unlocked (verify.md issue 8).
 
 ### D13. ofono
 
@@ -510,6 +575,14 @@ First boots (2026-10-06): the first version left out "usb" (it was based on conn
 built-in defaults only), and the USB debug network on usb0 lost its address mid-boot. With
 "usb" back, the next boot kept it. connman logs nothing about usb0 either way, so the link is
 inferred, not seen.
+Keeping "usb" blacklisted also keeps connman's sailfish_developer_mode plugin (which opens
+the firewall on the interface usb-moded reports) away from usb0, and the [wifi]/[ethernet]
+port-22 rules of jolla-developer-mode never apply to it. `firewall.d/50-pdx246-usb-firewall.conf`
+opens tcp/22, udp/67 and ping on usb0 statically instead ([General] only; literal interface
+names, "usb+" is rejected; file name must end in "firewall.conf"; read at start and on
+`systemctl reload connman`). The reference ports' route (no "usb" in the blacklist,
+`FallbackDeviceTypes = usb0:gadget`, `DontBringDownAtStartup = usb`) was never tested on
+pdx246: the 2026-10-06 boot above only dropped "usb" from the list.
 
 ### D16. WLAN
 
@@ -814,8 +887,9 @@ hybris provider delivered a fix (accuracy level detailed, ~46 m), 50 satellites 
 
 ### Device data (adb root on LineageOS, or any root shell on Sailfish OS)
 
-- **D1 extcon** of the dwc3 glue: `for e in /sys/class/extcon/*; do echo $e $(cat $e/name); done`
-  -> `[udev] extcon_tracking/extcon_path` in 99-usb-moded-pdx246.ini.
+- ~~D1 extcon~~ (closed 2026-10-08): no usable USB extcon (the glue's DT extcon is the EUD's,
+  the battery charger's is micro-USB only; extconN numbers are not stable either), so
+  `[udev] extcon_tracking = 0` (D12).
 - **D2 ALSA card id**: `cat /proc/asound/cards` -> exact id in
   99-pulseaudio-ignore-builtin-card.rules.
 - **D3 DT model**: `cat /sys/firmware/devicetree/base/model` -> CPUCHECK_STRING in
@@ -939,10 +1013,12 @@ The final contract all four adaptation repos follow (2026-10-04):
   `droid-hal-pdx246-vendor_dlkm` with the same version-release as `-vendor_boot` and
   `-kernel-dtbo`; its %post registers flash-bootimg.sh. Open: img-boot's Release must
   change per build before any update channel (B6).
-- **USB in the running OS** (decision D12): usb-moded-configfs-setup.sh waits up to 30 s after
-  droid-hal-init for /sys/class/udc/a600000.dwc3 and, if absent, writes `peripheral`
-  to /sys/bus/platform/devices/a600000.ssusb/mode and logs it; a bring-up aid to drop
-  once the Type-C role switch is shown to work.
+- **USB in the running OS** (decision D12): usb-moded-configfs-setup.sh waits for
+  /sys/class/udc/a600000.dwc3 (up to 30 s, at most 3 s after the charger's `usb` power supply
+  appears) and, if it is absent and the glue is not in host mode, writes `peripheral` to
+  /sys/bus/platform/devices/a600000.ssusb/mode and logs it (a one-off role change; the next
+  Type-C event overrides it); a bring-up aid to drop once boots show the UDC appearing
+  without the mode write (R4).
 - **Slot marking** (decision D22): pdx246-mark-slot.service in this repo.
 - **Build** (README.md): host `make hybris-hal droidmedia vendor_dlkmimage
   audio.hidl_compat.default` (lunch lineage_pdx246-bp4a-userdebug); SDK `-d`, `-c`,
@@ -1014,13 +1090,14 @@ The final contract all four adaptation repos follow (2026-10-04):
 | sparse/boot/flash-preflight.sh | new | header: user, Apache-2.0 |
 | sparse/boot/flashing-README.txt | new | header: user, Apache-2.0 |
 | sparse/etc/connman/main.conf.d/50-pdx246.conf | new | header |
+| sparse/etc/connman/firewall.d/50-pdx246-usb-firewall.conf | new (syntax per connman-firewall.config(5), sailfishos/connman) | header |
 | sparse/etc/dconf/db/vendor.d/jolla-camera-hw.txt | new (dconf key as used by Jolla configs) | header |
 | sparse/etc/libncicore.conf | new | header |
 | sparse/etc/mce/70-battery-pdx246.ini | new (keys as in zambezi 70-battery-zambezi.ini; values from dev/device.mk) | header |
 | sparse/etc/ofono/binder.d/pdx246.conf | new (keys from mer-hybris/ofono-binder-plugin binder.conf) | header |
 | sparse/etc/pulse/arm_droid_card_custom.pa | new; `hw_volume=false` as in mer-hybris/droid-config-sony-zambezi@70a3767:sparse/etc/pulse/arm_droid_card_custom.pa (Jolla) | header |
 | sparse/etc/sensorfw/sensord.conf.d/60-sensors-pdx246.conf | new (layout of sailfishos/sensorfw config/60-sensors-DEVICE.conf) | header (`;` comments) |
-| sparse/etc/usb-moded/99-usb-moded-pdx246.ini | new; keys and layout as zambezi usb-moded-zambezi.ini, values from pdx246 | header |
+| sparse/etc/usb-moded/99-usb-moded-pdx246.ini | new; keys and defaults from usb-moded src (usb_moded-configfs.c for [configfs], usb_moded-config.c for [android] idVendor; tag mer/0.86.0+mer69); the [configfs]/[network]/[udev] layout and the keys gadget_conf_directory, function_rndis, interface and extcon_tracking as zambezi usb-moded-zambezi.ini; values from pdx246 | header |
 | sparse/lib/udev/rules.d/99-pdx246-trimarea.rules | new | header |
 | sparse/lib/udev/rules.d/99-pulseaudio-ignore-builtin-card.rules | new (rule form as in zambezi's file of that name) | header |
 | sparse/usr/bin/droid/dmsetup-dynparts.sh | new | header |
@@ -1033,6 +1110,8 @@ The final contract all four adaptation repos follow (2026-10-04):
 | sparse/usr/lib/systemd/system/{system_root,system,system_ext,product,vendor,vendor_dlkm,odm}.mount | new (ref units not used) | header |
 | sparse/usr/lib/systemd/system/local-fs.target.wants/*.mount | new symlinks | REUSE.toml |
 | sparse/usr/lib/systemd/system/usb-moded-configfs-setup.service, usb-moded.service.d/50-configfs-setup.conf | new | header |
+| sparse/usr/lib/systemd/system/usb-moded.service.d/51-pdx246-retry.conf | new | header |
+| sparse/usr/lib/systemd/system/policies-setup.service.d/50-pdx246-after-usb-moded.conf | new | header |
 | sparse/usr/lib/systemd/system/wifisetup.service | new | header |
 | sparse/usr/lib/systemd/system/multi-user.target.wants/wifisetup.service | new symlink (was network.target.wants until 2026-10-06, D16) | REUSE.toml |
 | sparse/usr/lib/systemd/system/droid-bootctl.service.d/50-pdx246-timeout.conf | new | header |

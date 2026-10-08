@@ -1,11 +1,10 @@
 # SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
 # SPDX-License-Identifier: Apache-2.0
 #
-# Creates the configfs gadget skeleton usb-moded needs and, as a bring-up aid,
-# forces the dwc3 glue into peripheral mode when no UDC has appeared 30 s after
-# droid-hal-init (see the script). Pulled in by
-# usb-moded.service.d/50-configfs-setup.conf; usb-moded starts after it, so it
-# finds the UDC.
+# Creates the configfs gadget skeleton usb-moded needs, waits for the
+# charger's "usb" power supply and, as a bring-up aid, forces the dwc3 glue
+# into peripheral mode when no UDC appears (see the script). Pulled in by
+# usb-moded.service.d/50-configfs-setup.conf; usb-moded starts after it.
 
 [Unit]
 Description=Prepare the configfs USB gadget for usb-moded
@@ -16,5 +15,6 @@ Before=usb-moded.service
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=/usr/libexec/usb-moded-configfs-setup.sh
-# configfs wait (10 s) + UDC wait (30 s) + settle (5 s), with margin.
-TimeoutStartSec=90
+# configfs wait (10 s) + UDC wait (30 s) + settle (5 s) + power supply wait
+# (30 s), with margin.
+TimeoutStartSec=120

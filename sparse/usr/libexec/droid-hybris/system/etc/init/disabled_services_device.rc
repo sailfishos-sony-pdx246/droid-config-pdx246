@@ -12,8 +12,14 @@
 #   pdx246's definition (/vendor/etc/init/android.hardware.audio.service_64.rc)
 #   has "override" and replaces that stub. That is wanted: audio.hidl_compat
 #   forwards to this service.
-# - vendor.qti.vibrator, vendor.usb-hal, vendor.usbgadget-hal: idle without the
-#   Android framework; disable only if they turn out to interfere.
+# - vendor.qti.vibrator: idle without the Android framework.
+# - vendor.usb-hal (QTI IUsb, vendor/qcom/opensource/usb/hal/Usb.cpp): its
+#   g1 and glue writers run only on binder client calls: the uevent thread
+#   started by setCallback (UDC bind on a UDC "add" uevent, MaxPower 0 under
+#   USB-PD), enableUsbData (g1/UDC "none" or rebind) and resetUsbPort (glue
+#   mode). No client exists under Sailfish OS. Stub it if logcat from
+#   android.hardware.usb-service.qti ever shows "creating thread", "Binding
+#   UDC", "enableUsbData" or "resetUsbPort".
 
 # Sony's diagnostics/usage-data daemon (init.sony.idd.rc); nothing in Sailfish
 # OS consumes its output. The 10 IV/10 V port disables it as well.
@@ -42,4 +48,18 @@ service vendor.dataqti /vendor/bin/qti_HYBRIS_DISABLED
 # non-updatable service"), like sparse-16's bpfloader stub does for tethering's
 # bpfloader (which carries reboot_on_failure). Never mark these stubs updatable.
 service adbd /apex/com.android.adbd/bin/adbd_HYBRIS_DISABLED
+    user root
+
+# usbd (system/core/usbd; class late_start, oneshot) asks the QTI gadget HAL
+# for MTP about 10 s into boot. The HAL then writes "none" to g1/UDC (an unbind
+# in this kernel, configfs.c:310) and 18d1:4ee1, os_desc/use=1 and device class
+# 0 into usb-moded's gadget g1. usb-moded owns g1 here.
+service usbd /system/bin/usbd_HYBRIS_DISABLED
+    user root
+    oneshot
+    disabled
+
+# The QTI USB gadget HAL (IUsbGadget, class hal). usbd was its only client; it
+# runs as system and would otherwise act on g1 for any future client.
+service vendor.usbgadget-hal /vendor/bin/hw/android.hardware.usb.gadget-service.qti_HYBRIS_DISABLED
     user root

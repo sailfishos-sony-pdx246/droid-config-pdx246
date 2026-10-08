@@ -43,12 +43,14 @@ Checked out at `$ANDROID_ROOT/hybris/droid-configs`:
 - `pdx246-mark-slot.service`: marks slot a successful as soon as the boot HAL
   runs, not only once the UI is up, so failed bring-up boots do not make the
   bootloader fail over to the empty slot b.
-- USB (usb-moded on `a600000.dwc3`; the gadget skeleton, and as a bring-up aid
-  a forced peripheral mode when no UDC appears within 30 s), ofono binder
+- USB (usb-moded on `a600000.dwc3`: the gadget skeleton, MaxPower 900 for charging
+  from a PC, high speed for MTP, Jolla's vendor ID, no extcon tracking, a connman firewall
+  rule for SSH and DHCP on usb0, usbd and the QTI gadget HAL stubbed; as a bring-up aid a
+  forced peripheral mode when no UDC appears), ofono binder
   (IRadio 1.5, two slots), mce charging control, connman interface blacklist,
   WLAN start, audio compat link and PulseAudio card options, sensorfw, NFC, CSD
-  hardware list, camera labels, ssu community mapping, TrimArea permissions, one
-  device-specific disabled Android service.
+  hardware list, camera labels, ssu community mapping, TrimArea permissions,
+  device-specific disabled Android services.
 
 ## Building
 
