@@ -189,11 +189,14 @@ packages, and `mapplauncherd-booster-silica-qt5-media` (8 GB RAM) enabled.
   disabled) and was booted once to the home screen and left running a minute, so the
   Virtual A/B merge has completed. An install that went to slot b (an OTA or a
   sideload writes the inactive slot) has to be moved to slot a first.
-- Re-flashing over an installed Sailfish OS: fastbootd then runs on the Sailfish OS
-  kernel and vendor_boot. If `fastboot reboot fastboot` does not reach fastbootd
-  (the client dies in reboot_to_userspace_fastboot, fastboot.cpp:1539-1555), flash
-  the saved LineageOS boot_a, vendor_boot_a and dtbo_a from the bootloader first,
-  then run ./flash.sh again (flashing-README.txt). Untested (TODO R16).
+- Re-flashing over an installed Sailfish OS (R16, tested 2026-10-08): `fastboot reboot
+  fastboot` from the bootloader does not reach fastbootd while boot_a holds hybris-boot;
+  the phone boots Sailfish OS again and flash.sh waits forever (nothing written). The
+  saved LineageOS boot_a, vendor_boot_a and dtbo_a must be flashed from the bootloader
+  first; then LineageOS fastbootd comes up and flash.sh (or the by-hand sequence) works.
+  flashing-README.txt and flash-config.sh say so. Also seen: `reboot fastboot` can race
+  ("FAILED (usb_read failed: No such device)"), flash.sh exits, but the phone is in
+  fastbootd; continue by hand (flash-preflight.sh, then the remaining FLASH_OPS).
 - Interrupted run (USB drop while sending a large sparse image, TRAP 2 in
   PORTING-NOTES.md:7438-7448): reconnect until `fastboot devices` lists the phone,
   `fastboot reboot bootloader`, start ./flash.sh again; the rerun rewrites a
@@ -944,10 +947,9 @@ hybris provider delivered a fix (accuracy level detailed, ~46 m), 50 satellites 
   recovery's fastbootd USB ID), `fastboot --set-active=a` and `fastboot reboot fastboot`
   from the Sony bootloader, and flash-preflight.sh's four getvars answered by
   fastbootd as expected (run it by hand first).
-- **R16 re-flash over Sailfish OS**: does `fastboot reboot fastboot` reach fastbootd
-  when boot_a/vendor_boot_a hold the Sailfish OS set (LineageOS recovery_a on the
-  Sailfish kernel)? If not, the documented route (saved LineageOS boot_a,
-  vendor_boot_a, dtbo_a first) is the only one; say so in flashing-README.txt.
+- ~~R16 re-flash over Sailfish OS~~ (2026-10-08): `fastboot reboot fastboot` does not reach
+  fastbootd with the Sailfish set on slot a (it boots Sailfish OS); the LineageOS boot
+  images first are the only route. Documented in flashing-README.txt and flash-config.sh.
 
 ### Build-time
 

@@ -78,15 +78,25 @@ section.
 
 = RE-FLASHING OVER AN INSTALLED SAILFISH OS =
 
-fastbootd then runs on the Sailfish OS kernel. If "fastboot reboot fastboot"
-does not reach fastbootd, enter the bootloader (power off, hold volume up
-while plugging in USB), flash the saved LineageOS images
+fastbootd cannot be reached while boot_a holds Sailfish OS: "fastboot reboot
+fastboot" then simply boots Sailfish OS again (tested 2026-10-08), and flash.sh
+waits for fastbootd forever (stop it with Ctrl-C; nothing has been written).
+So before running ./flash.sh over an installed Sailfish OS, enter the
+bootloader (power off, hold volume up while plugging in USB) and flash the
+saved LineageOS images of the release on slot a:
 
   fastboot flash boot_a <LineageOS boot.img>
   fastboot flash vendor_boot_a <LineageOS vendor_boot.img>
   fastboot flash dtbo_a <LineageOS dtbo.img>
 
-and run ./flash.sh again.
+Do not let the phone boot normally with these, then run ./flash.sh. It writes
+the Sailfish OS boot_a, vendor_boot_a and dtbo_a again at the end.
+
+If flash.sh stops right after "reboot fastboot" with "FAILED (usb_read failed:
+No such device)", the phone usually reached fastbootd anyway (the reboot raced
+the reply): check with "fastboot getvar is-userspace" and either run
+"fastboot reboot bootloader" and ./flash.sh again, or continue by hand from
+fastbootd as in the next section.
 
 
 = FLASHING BY HAND =

@@ -35,10 +35,10 @@
 # completed, and vbmeta_a must have verification disabled (the LineageOS flash
 # procedure does that).
 #
-# Re-flashing over an installed Sailfish OS: fastbootd then runs on the
-# Sailfish OS kernel. If "fastboot reboot fastboot" does not reach fastbootd,
-# flash the saved LineageOS boot_a, vendor_boot_a and dtbo_a from the
-# bootloader, then run ./flash.sh again (flashing-README.txt).
+# Re-flashing over an installed Sailfish OS: "fastboot reboot fastboot" does not
+# reach fastbootd while boot_a holds Sailfish OS (it boots Sailfish OS again,
+# tested 2026-10-08). Flash the saved LineageOS boot_a, vendor_boot_a and dtbo_a
+# from the bootloader first, then run ./flash.sh (flashing-README.txt).
 
 VALID_PRODUCTS=(
 "pdx246"
