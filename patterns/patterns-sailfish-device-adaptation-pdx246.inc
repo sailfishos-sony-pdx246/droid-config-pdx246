@@ -109,12 +109,17 @@ Requires: usb-moded
 # hammerhead, grouper, and maguro use this in scripts, so include for all
 Requires: rfkill
 
-# enable device lock and allow to select untrusted software
-Requires: jolla-devicelock-daemon-encsfa
-# Fingerprint (vendor serves HIDL fingerprint 2.1 natively): switch to the
-# fpd stack once its packages are available for this build; see NOTES.md TODO.
-#Requires: sailfish-devicelock-fpd
-#Requires: sailfish-fpd
+# Device lock with fingerprint (TODO B5, under test since 2026-10-09): Jolla's
+# fpd stack. sailfish-devicelock-fpd replaces jolla-devicelock-daemon-encsfa and
+# provides jolla-devicelock-plugin-encsfa; sailfish-fpd pulls in
+# sailfish-fpd-slave-binder, a client of the vendor's HIDL fingerprint 2.1 HAL.
+# Its settings (/etc/sailfish-fpd/50-settings.ini) and wait_for_keymint.service
+# come from droid-configs-device sparse-16. Fallback if it fails:
+# sailfish-fpd-community + droid-biometry-fp (notes: fingerprint research).
+Requires: sailfish-devicelock-fpd
+Requires: sailfish-fpd
+Obsoletes: jolla-devicelock-daemon-encsfa
+Obsoletes: jolla-devicelock-plugin-encsfa
 
 # Enable home encryption
 #Requires: sailfish-device-encryption
