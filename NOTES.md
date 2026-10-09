@@ -107,7 +107,7 @@ Adaptation pattern:
 | + `bluebinder`, `ofono-binder-plugin`, `dummy_netd` | BT via HCI VHCI (sailfish.config BT_HCIVHCI=y), binder ofono (D13), sparse-16 ships dummy_netd's config |
 | `ofono-binder-plugin-ext-qti` commented | IMS is AIDL only on pdx246 (findings adaptation-repos 6); TODO |
 | `audiosystem-passthrough-dummy-af` enabled | template comment: needed with qti-mode passthrough on Qualcomm; zambezi and ref enable it |
-| `jolla-devicelock-daemon-encsfa` kept, fpd lines commented | the fingerprint packages are not yet sorted out for this build (TODO); template default keeps the image buildable |
+| `sailfish-devicelock-fpd` + `sailfish-fpd` instead of `jolla-devicelock-daemon-encsfa` (Obsoletes for both encsfa packages) | fingerprint with Jolla's fpd stack, tested 2026-10-09 (B5 closed) |
 | `nfcd-binder-plugin` enabled | NXP HAL android.hardware.nfc_snxxx@1.2-service (LOS out vendor/etc/init) |
 
 Configuration pattern: `jolla-settings-networking-multisim` (dsds, two IRadio
@@ -972,8 +972,17 @@ hybris provider delivered a fix (accuracy level detailed, ~46 m), 50 satellites 
   mic log shows no "cannot stat"; `./flash.sh --dry-run`-style check with the
   phone in fastboot mode only runs the dry run (`ONLY_DRY_RUN=1 ./flash.sh`).
 - **B4** IMS/VoLTE: find an ofono ext plugin for AIDL IMS v12, then enable the pattern line.
-- **B5** Fingerprint: decide the fpd stack (sailfish-fpd / sailfish-devicelock-fpd /
-  droid-fake-crypt as on the 10 IV/10 V, or Jolla's) and switch the pattern lines.
+- ~~B5 Fingerprint~~ (closed 2026-10-09): Jolla's stack, sailfish-devicelock-fpd 1.2.0 +
+  sailfish-fpd 1.5.6 (+ sailfish-fpd-slave-binder from adaptation-common), no build. The HAL is
+  HIDL fingerprint 2.1 (Sony/Egis) with HIDL gatekeeper 1.0; keystore2 already negotiates the
+  HMAC key, so no droid-fake-crypt (its HIDL-only renegotiation could break the key) and no
+  keystore_early_boot. Tested on the phone: lock code kept across the encsfa -> fpd swap, enroll,
+  unlock, wrong finger rejected, two fingers, both after a reboot, lock-code change, removal.
+  From screen off the first touch only wakes to the code pad (stock Sailfish: mce's fingerprint
+  wakeup acts like a double power-key press). fpslave's 'remote object init failed' at boot are
+  early connects while the HAL initialises (iddd stubbed, ~1 s IDD retries). Research:
+  notes/analysis/fingerprint-research-2026-10-09/. Fallback if ever needed:
+  sailfish-fpd-community + droid-biometry-fp (Nagara).
 - **B6** img-boot release per build before any update channel (D21; not implemented).
 
 ---

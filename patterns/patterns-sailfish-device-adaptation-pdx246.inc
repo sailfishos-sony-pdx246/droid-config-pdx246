@@ -109,12 +109,12 @@ Requires: usb-moded
 # hammerhead, grouper, and maguro use this in scripts, so include for all
 Requires: rfkill
 
-# Device lock with fingerprint (TODO B5, under test since 2026-10-09): Jolla's
+# Device lock with fingerprint (B5, tested on the phone 2026-10-09): Jolla's
 # fpd stack. sailfish-devicelock-fpd replaces jolla-devicelock-daemon-encsfa and
 # provides jolla-devicelock-plugin-encsfa; sailfish-fpd pulls in
 # sailfish-fpd-slave-binder, a client of the vendor's HIDL fingerprint 2.1 HAL.
 # Its settings (/etc/sailfish-fpd/50-settings.ini) and wait_for_keymint.service
-# come from droid-configs-device sparse-16. Fallback if it fails:
+# come from droid-configs-device sparse-16. Fallback if ever needed:
 # sailfish-fpd-community + droid-biometry-fp (notes: fingerprint research).
 Requires: sailfish-devicelock-fpd
 Requires: sailfish-fpd
