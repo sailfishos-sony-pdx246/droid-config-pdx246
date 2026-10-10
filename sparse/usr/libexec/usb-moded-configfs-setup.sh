@@ -85,16 +85,17 @@ else
 fi
 
 # usb-moded picks its charger device once at startup and ignores later "add"
-# events. If /sys/class/power_supply/usb is missing then, it guesses another
-# supply (ucsi_glink's ucsi-source-psy reports TYPE=USB for any partner, so
-# a wall charger would look like a PC), or, when none qualifies (both come
-# with the ADSP), exits; usb-moded.service.d/51-pdx246-retry.conf restarts it
-# every 5 s. Wait for it.
+# events. Without /sys/class/power_supply/usb it would guess another supply
+# (ucsi_glink's ucsi-source-psy reports TYPE=USB for any partner) or, with
+# [udev] android_tracking on, take change events from every power supply (the
+# battery would read as a charger). usb-moded.service.d/51-pdx246-retry.conf
+# holds it back until the supply exists and retries every 5 s. Wait for it
+# here so usb-moded starts on the first try.
 n=0
 while [ ! -e "$PSY" ] && [ $n -lt 30 ]; do
     sleep 1
     n=$((n + 1))
 done
-[ -e "$PSY" ] || echo "usb-moded-configfs-setup: no $PSY after 30 s; with extcon tracking off usb-moded exits ('no charger device found') and retries every 5 s until it appears" >&2
+[ -e "$PSY" ] || echo "usb-moded-configfs-setup: no $PSY after 30 s; usb-moded's start check (51-pdx246-retry.conf) retries every 5 s until it appears" >&2
 
 exit 0

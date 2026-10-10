@@ -471,9 +471,11 @@ Confirmed on the seventh boot: the volume keys work in calls and the speakerphon
   charger device once at startup and ignores later "add" events; without `usb` it guesses
   another supply (ucsi_glink's ucsi-source-psy reports TYPE=USB for any partner, so a wall
   charger would look like a PC). TimeoutStartSec=120 covers all waits. If the supply is
-  still missing after that (ADSP later than about 65 s), usb-moded finds no charger device
-  (extcon tracking is off, see below) and exits; `usb-moded.service.d/51-pdx246-retry.conf`
-  (StartLimitIntervalSec=0, RestartSec=5) keeps restarting it until the supply exists,
+  still missing after that (ADSP later than about 65 s), `usb-moded.service.d/51-pdx246-retry.conf`
+  holds usb-moded back: `ExecStartPre=/usr/bin/test -e /sys/class/power_supply/usb` fails the
+  start (with android tracking on, usb-moded would otherwise start without a charger device and
+  take change events from every power supply; the battery's PRESENT=1 would read as a charger),
+  and Restart=always with StartLimitIntervalSec=0, RestartSec=5 retries until the supply exists,
   instead of the default start limit leaving it failed for the boot.
 - Charging from a PC (2026-10-08, confirmed with the debug gadget): configs/b.1 starts at
   MaxPower = CONFIG_USB_GADGET_VBUS_DRAW (2 mA), and the charger takes it as its input
@@ -502,8 +504,32 @@ Confirmed on the seventh boot: the volume keys work in calls and the speakerphon
   USB token. The codec's devpath sorts last, so with tracking on, detection would only work
   while the codec's extcon is registered before usb-moded starts and no EUD or charger
   extcon has sent the last change event. extcon_tracking = 0 removes that dependence. Cable
-  detection uses the charger's `usb` power supply (TYPE USB/USB_CDP = PC, USB_DCP =
-  charger). Closes TODO D1.
+  presence comes from the charger's `usb` power supply; PC or charger from android_usb (next
+  bullet). Closes TODO D1.
+- `[udev] android_tracking = 1` (USB-PD wall charger vs PC; review wf_c23ca2a0-e8e; tested
+  2026-10-10). The `usb` supply's TYPE cannot tell a PC from a charger: qti_battery_charger maps
+  PD, PD_DRP and PD_PPS to USB_PD and Unknown to USB (qti_battery_charger.c:890-917; ONLINE is
+  forced to 0 while Unknown, :1199-1211); usb-moded mer69 counts USB_PD as a PC unless it reported
+  a charger just before, and pdx246 goes Unknown -> USB_PD, so a PD wall charger got the unlock
+  prompt and developer mode after the unlock (2026-10-08 and 2026-10-10). A PD laptop shows the
+  same type and the same Type-C sysfs (data role device, partner PD; 5.10 UCSI reads no
+  identity). The signal is enumeration: CONFIG_USB_CONFIGFS_UEVENT=y gives
+  /sys/class/android_usb/android0 with USB_STATE CONNECTED on a host's first SETUP
+  (configfs.c:1573-1576), CONFIGURED on SET_CONFIGURATION and DISCONNECTED on a disconnect or
+  UDC unbind (:1658-1661). With tracking, usb-moded replaces the type: DISCONNECTED -> USB_DCP
+  (charger), anything else -> USB with online 1 (PC) (umudev_evaluate_state, verified at mer69).
+  Measured 2026-10-10 (~/Documents/sailfishos/usbpd-2026-10-10/): PC plug -> CONNECTED 0.28-0.29 s;
+  the PD charger never enumerates (no android_usb event for minutes, UDC 'not attached'); rebind
+  gaps DISCONNECTED -> CONNECTED 0.31-0.37 s (53 mode switches), no usb supply event inside a gap,
+  no PC -> charger flip in 25 switches with tracking on. Behaviour with tracking: a PD wall charger
+  gives dedicated_charger (no prompt; an unlock changes nothing); a PC counts as a charger for
+  ~1 s after the plug, then as before (locked: charging_only with the unlock prompt; unlocked:
+  developer_mode 1.9-2.2 s after the plug, 5 replugs); an unplug can show up to ~1 s late; a host
+  that never sends a SETUP counts as a charger (no USB SSH: use Wi-Fi). Preconditions: g1 must be
+  the first configfs gadget of the boot and never be removed and recreated (android_setup always
+  uses android0, configfs.c:1562-1565, 1800-1801; android_device_destroy leaves it dangling,
+  :1818-1827), and usb-moded must not run without the `usb` supply (51-pdx246-retry.conf, above).
+  The same pair of keys as nagara's 99-usb-moded-nagara.ini (6cc5346).
 - SSH in developer mode: connman's INPUT policy is DROP and nothing opens usb0 (see D15), so
   `etc/connman/firewall.d/50-pdx246-usb-firewall.conf` adds tcp/22, udp/67 (usb-moded's
   udhcpd) and ping on usb0 in [General]. The bring-up aid's own drop-in never worked
@@ -1170,7 +1196,7 @@ The final contract all four adaptation repos follow (2026-10-04):
 | sparse/etc/ofono/binder.d/pdx246.conf | new (keys from mer-hybris/ofono-binder-plugin binder.conf) | header |
 | sparse/etc/pulse/arm_droid_card_custom.pa | new; `hw_volume=false` as in mer-hybris/droid-config-sony-zambezi@70a3767:sparse/etc/pulse/arm_droid_card_custom.pa (Jolla) | header |
 | sparse/etc/sensorfw/sensord.conf.d/60-sensors-pdx246.conf | new (layout of sailfishos/sensorfw config/60-sensors-DEVICE.conf) | header (`;` comments) |
-| sparse/etc/usb-moded/99-usb-moded-pdx246.ini | new; keys and defaults from usb-moded src (usb_moded-configfs.c for [configfs], usb_moded-config.c for [android] idVendor; tag mer/0.86.0+mer69); the [configfs]/[network]/[udev] layout and the keys gadget_conf_directory, function_rndis, interface and extcon_tracking as zambezi usb-moded-zambezi.ini; values from pdx246 | header |
+| sparse/etc/usb-moded/99-usb-moded-pdx246.ini | new; keys and defaults from usb-moded src (usb_moded-configfs.c for [configfs], usb_moded-config.c for [android] idVendor; tag mer/0.86.0+mer69); the [configfs]/[network]/[udev] layout and the keys gadget_conf_directory, function_rndis, interface and extcon_tracking as zambezi usb-moded-zambezi.ini; values from pdx246; android_tracking/extcon_tracking pair as nagara 99-usb-moded-nagara.ini (6cc5346), keys from usb_moded-config.h mer69 | header |
 | sparse/lib/udev/rules.d/99-pdx246-trimarea.rules | new | header |
 | sparse/lib/udev/rules.d/99-pulseaudio-ignore-builtin-card.rules | new (rule form as in zambezi's file of that name) | header |
 | sparse/usr/bin/droid/dmsetup-dynparts.sh | new | header |
