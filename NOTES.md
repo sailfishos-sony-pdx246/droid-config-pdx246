@@ -970,6 +970,27 @@ Tested 2026-10-10 (droid-bthelper 0.3.0+pdx246...34f77d1, pattern 1-202610100800
 connect -> PAL 'Device 7/24 connected = 1', four headset calls with BTSCO on and routing 0x10,
 headset off/on twice -> balanced disconnect/connect, a call without headset stays on the phone.
 
+### D27. Lock VT switching: suspend kept the phone awake via mce_bluez_wait (2026-10-10)
+
+Seen as kernel 'Abort: Pending Wakeup Sources: mce_bluez_wait' with Bluetooth off (rfkill-blocked
+since boot). Chain (review wf_57d831a0-ebe, verified in the kernel config and on the phone): the
+kernel has CONFIG_VT=y (mer-kernel-check requires it) with VT_CONSOLE and VT_CONSOLE_SLEEP but no
+fbdev, so nothing calls pm_vt_switch_required() (its only user is fbmem.c) and pm_prepare_console
+switches to tty63 on every suspend attempt and back on resume. systemd-logind deactivates the
+seat0 session (defaultuser, VT 7) on each switch, obexd 5.86 re-registers its profiles, bluetoothd
+sends an org.bluez PropertiesChanged, and mce 1.116.5 (modules/bluetooth.c) holds mce_bluez_wait
+for 2 s on any such signal: after most resumes the phone stayed awake ~2 s, and many suspend
+attempts aborted. Fix: `pdx246-vt-lockswitch.service` (oneshot, before mce, pulled in by
+`mce.service.d/52-pdx246-vt-lockswitch.conf`) issues VT_LOCKSWITCH on /dev/tty0 at boot; with
+switching locked, set_console fails and pm_prepare_console does nothing. Nothing on Sailfish
+switches VTs. A/B 2026-10-10 (unplugged, display off, ~37 min after locking by hand): 0 new
+mce_bluez_wait events (30 before), 0 aborts by it (26 before), 41 suspends ok / 3 failed (RTC,
+timerfd, charger), awake gap resume -> next suspend median 2.05 s before (13 of 40 at 1.9-2.3 s)
+vs 0.00 s after (none at ~2 s), session stayed active on tty7, no 'Can't switch VCs'. Clean fix
+later in the kernel fragment: '# CONFIG_VT_CONSOLE is not set' (VT_CONSOLE_SLEEP depends on it;
+pm_prepare_console becomes a stub); then drop the unit and drop-in. That needs a kernel round
+(new release string: hybris-boot, vendor_boot and vendor_dlkm together).
+
 ---
 
 ## TODOs
@@ -1217,6 +1238,8 @@ The final contract all four adaptation repos follow (2026-10-04):
 | sparse/usr/lib/systemd/system/sensorfwd.service.d/50-pdx246-wait-sensors-hal.conf | new | header |
 | sparse/usr/lib/systemd/system/mce.service.d/50-pdx246-wait-backlight.conf | new | header |
 | sparse/usr/lib/systemd/system/mce.service.d/51-pdx246-charging-control.conf | new | header |
+| sparse/usr/lib/systemd/system/mce.service.d/52-pdx246-vt-lockswitch.conf | new | header |
+| sparse/usr/lib/systemd/system/pdx246-vt-lockswitch.service | new | header |
 | sparse/usr/lib/systemd/system/pdx246-charging-control.{path,service,timer} | new (idea as the 10 V port's qcom-charge-control-fixup, read for the topic only) | header |
 | sparse/usr/libexec/pdx246-charging-control.sh | new | header |
 | sparse/etc/mce/70-pdx246-hybris-features.ini | new | header |

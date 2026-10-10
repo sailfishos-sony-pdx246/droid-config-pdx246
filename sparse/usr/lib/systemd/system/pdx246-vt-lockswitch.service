@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
+# SPDX-License-Identifier: Apache-2.0
+#
+# Locks VT switching. The kernel has CONFIG_VT=y (mer-kernel-check requires it)
+# with VT_CONSOLE_SLEEP but no fbdev, so nothing registers
+# pm_vt_switch_required() and every suspend attempt switched the console to
+# tty63 and back. systemd-logind then deactivated the seat0 session each time,
+# obexd re-registered its profiles, bluez sent a PropertiesChanged and mce held
+# mce_bluez_wait for 2 s, even with Bluetooth off: most wakeups kept the phone
+# awake ~2 s longer and many suspend attempts aborted. With switching locked,
+# set_console fails and pm_prepare_console does nothing (NOTES D27).
+# VT_LOCKSWITCH = 0x560B, VT_UNLOCKSWITCH = 0x560C (include/uapi/linux/vt.h).
+# Pulled in by mce.service.d/52-pdx246-vt-lockswitch.conf. Drop this unit once
+# the kernel has "# CONFIG_VT_CONSOLE is not set".
+
+[Unit]
+Description=Lock VT switching so suspend does not switch consoles (pdx246)
+DefaultDependencies=no
+After=local-fs.target
+Before=mce.service shutdown.target
+Conflicts=shutdown.target
+ConditionPathExists=/dev/tty0
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/python3 -I -c "import fcntl, os; fcntl.ioctl(os.open('/dev/tty0', os.O_RDWR | os.O_NOCTTY), 0x560B)"
+ExecStop=/usr/bin/python3 -I -c "import fcntl, os; fcntl.ioctl(os.open('/dev/tty0', os.O_RDWR | os.O_NOCTTY), 0x560C)"
