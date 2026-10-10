@@ -83,6 +83,15 @@ Requires: qt5-plugin-generic-evdev
 Requires: pulseaudio-modules-droid
 Requires: pulseaudio-modules-droid-hidl
 
+# Bluetooth headset call audio (HFP/HSP): droid-bthelper tells the vendor
+# audio HAL (IDevice 7.0 setConnectedState) when a headset connects or
+# disconnects, so that PAL marks its SCO devices available and accepts
+# BT_SCO=on; without it call audio stays on the phone. Local build of
+# rinigus' droid-bthelper 0.3.0 (hybris/mw/droid-bthelper, branch
+# pdx246-0.3.0, tag 0.3.0 = upstream 511bcd9); the 10 IV/10 V copy targets
+# audio 6.0. NOTES.md D26.
+Requires: droid-bthelper >= 0.3.0
+
 # The -dummy-af is needed for newer devices that run the main
 # audiosystem-passthrough in qti mode (e.g. >=Android 9 Qualcomm),
 # to fix non-responding Camera app and/or voice during a phone call:

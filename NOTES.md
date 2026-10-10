@@ -884,6 +884,27 @@ fix is slower.
 Tested (2026-10-07): 'AIDL GNSS interface version 1 is below 2, using HIDL'; at an open window the
 hybris provider delivered a fix (accuracy level detailed, ~46 m), 50 satellites visible.
 
+### D26. Bluetooth headset call audio: droid-bthelper 0.3.0 for audio@7.0 (2026-10-10)
+
+With pulseaudio's `module-bluez5-discover headset=droid`, HFP call audio runs ADSP -> SLIMbus -> BT
+controller, so the vendor audio HAL must route to Bluetooth SCO. Qualcomm's AHAL/PAL only does that
+after a device-connection message (`connect=<audio_devices_t>`, sent by IDevice::setConnectedState;
+Android's audio policy sends it when HFP connects). pulseaudio-modules-droid 14.2.106 sends only
+BT_SCO=on/off, so PAL rejected BT_SCO=on ('SCO output and input devices are all unavailable') and
+calls stayed on the earpiece; this was the case since the first boot (the 2026-10-07 'headset calls
+work' was the earpiece). Runtime proof 2026-10-10: connect=32 and connect=-2147483640 through
+PulseAudio's set_parameters -> PAL 'Device 7/24 connected = 1', then a headset call worked fully.
+Fix: rinigus' droid-bthelper (BSD-3-Clause), which watches BlueZ and calls setConnectedState for
+AUDIO_DEVICE_OUT/IN_BLUETOOTH_SCO_HEADSET. pdx246 serves audio@7.0, so the upstream 7.0 version
+(511bcd9, v0.3.0) is used, not the 10 IV/10 V copy (sharks-dev 28ea916 targets 6.0, whose
+DeviceAddress is 48 bytes instead of 40). Local build: hybris/mw/droid-bthelper, branch
+pdx246-0.3.0, local tag 0.3.0 on 511bcd9 (build_packages.sh -o needs a reachable tag), plus four
+commits from a review: a bt-monitor use-after-free fix, exit on audio HAL death with
+Restart=on-failure (PAL loses the SCO state when the HAL restarts), HIDL status/Result checks with
+OUT and IN always sent, and %license. build-packages-sdk.sh step `bthelper`; the adaptation pattern
+requires droid-bthelper >= 0.3.0. Accepted drift: a helper restart re-sends connect for a connected
+headset without a disconnect first (PAL count 2; harmless, cleared by a reboot).
+
 ---
 
 ## TODOs
