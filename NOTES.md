@@ -904,6 +904,9 @@ Restart=on-failure (PAL loses the SCO state when the HAL restarts), HIDL status/
 OUT and IN always sent, and %license. build-packages-sdk.sh step `bthelper`; the adaptation pattern
 requires droid-bthelper >= 0.3.0. Accepted drift: a helper restart re-sends connect for a connected
 headset without a disconnect first (PAL count 2; harmless, cleared by a reboot).
+Tested 2026-10-10 (droid-bthelper 0.3.0+pdx246...34f77d1, pattern 1-202610100800, one reboot):
+connect -> PAL 'Device 7/24 connected = 1', four headset calls with BTSCO on and routing 0x10,
+headset off/on twice -> balanced disconnect/connect, a call without headset stays on the phone.
 
 ---
 
