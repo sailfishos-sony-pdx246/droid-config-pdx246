@@ -982,8 +982,12 @@ sends an org.bluez PropertiesChanged, and mce 1.116.5 (modules/bluetooth.c) hold
 for 2 s on any such signal: after most resumes the phone stayed awake ~2 s, and many suspend
 attempts aborted. Fix: `pdx246-vt-lockswitch.service` (oneshot, before mce, pulled in by
 `mce.service.d/52-pdx246-vt-lockswitch.conf`) issues VT_LOCKSWITCH on /dev/tty0 at boot; with
-switching locked, set_console fails and pm_prepare_console does nothing. Nothing on Sailfish
-switches VTs. A/B 2026-10-10 (unplugged, display off, ~37 min after locking by hand): 0 new
+switching locked, set_console fails and pm_prepare_console does nothing. The lock waits for
+seat0's active session (`usr/libexec/pdx246-vt-lockswitch.sh`, up to 120 s; without one it leaves
+switching unlocked): the first version locked at 4.97 s, before the user session switched from
+tty1 to its VT 7, which left seat0 without an active session (2026-10-10, repaired by hand). With
+the wait: 'VT switching locked (seat0 session 1 on tty7)' at 15.1 s, session active, mce not
+delayed. Nothing on Sailfish switches VTs after that. A/B 2026-10-10 (unplugged, display off, ~37 min after locking by hand): 0 new
 mce_bluez_wait events (30 before), 0 aborts by it (26 before), 41 suspends ok / 3 failed (RTC,
 timerfd, charger), awake gap resume -> next suspend median 2.05 s before (13 of 40 at 1.9-2.3 s)
 vs 0.00 s after (none at ~2 s), session stayed active on tty7, no 'Can't switch VCs'. Clean fix
@@ -1240,6 +1244,7 @@ The final contract all four adaptation repos follow (2026-10-04):
 | sparse/usr/lib/systemd/system/mce.service.d/51-pdx246-charging-control.conf | new | header |
 | sparse/usr/lib/systemd/system/mce.service.d/52-pdx246-vt-lockswitch.conf | new | header |
 | sparse/usr/lib/systemd/system/pdx246-vt-lockswitch.service | new | header |
+| sparse/usr/libexec/pdx246-vt-lockswitch.sh | new | header |
 | sparse/usr/lib/systemd/system/pdx246-charging-control.{path,service,timer} | new (idea as the 10 V port's qcom-charge-control-fixup, read for the topic only) | header |
 | sparse/usr/libexec/pdx246-charging-control.sh | new | header |
 | sparse/etc/mce/70-pdx246-hybris-features.ini | new | header |

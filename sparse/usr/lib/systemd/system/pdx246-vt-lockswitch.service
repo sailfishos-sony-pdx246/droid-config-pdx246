@@ -8,7 +8,9 @@
 # obexd re-registered its profiles, bluez sent a PropertiesChanged and mce held
 # mce_bluez_wait for 2 s, even with Bluetooth off: most wakeups kept the phone
 # awake ~2 s longer and many suspend attempts aborted. With switching locked,
-# set_console fails and pm_prepare_console does nothing (NOTES D27).
+# set_console fails and pm_prepare_console does nothing (NOTES D27). The lock
+# waits for seat0's active session (/usr/libexec/pdx246-vt-lockswitch.sh): an
+# earlier lock kept the console on tty1 and left the session inactive.
 # VT_LOCKSWITCH = 0x560B, VT_UNLOCKSWITCH = 0x560C (include/uapi/linux/vt.h).
 # Pulled in by mce.service.d/52-pdx246-vt-lockswitch.conf. Drop this unit once
 # the kernel has "# CONFIG_VT_CONSOLE is not set".
@@ -17,12 +19,13 @@
 Description=Lock VT switching so suspend does not switch consoles (pdx246)
 DefaultDependencies=no
 After=local-fs.target
-Before=mce.service shutdown.target
+Before=shutdown.target
 Conflicts=shutdown.target
 ConditionPathExists=/dev/tty0
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/bin/python3 -I -c "import fcntl, os; fcntl.ioctl(os.open('/dev/tty0', os.O_RDWR | os.O_NOCTTY), 0x560B)"
+ExecStart=/usr/libexec/pdx246-vt-lockswitch.sh
+TimeoutStartSec=150
 ExecStop=/usr/bin/python3 -I -c "import fcntl, os; fcntl.ioctl(os.open('/dev/tty0', os.O_RDWR | os.O_NOCTTY), 0x560C)"
