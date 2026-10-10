@@ -1,0 +1,19 @@
+# SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
+# SPDX-License-Identifier: Apache-2.0
+#
+# Sony's driver resumes charging 30 min after the last write of 1 to
+# smart_charging_interruption (somc_battchg_ext SMART_CHARGE_WDOG_DELAY_MS),
+# and mce writes only when its decision changes. Running the copy again
+# 10 min after its last run (path- or timer-started) re-arms that watchdog
+# while charging is suspended. Neither this timer (CLOCK_MONOTONIC) nor the
+# driver's delayed work counts time in suspend. OnBootSec= is the fallback
+# for a decision the boot-time run did not apply. Pulled in by
+# mce.service.d/51-pdx246-charging-control.conf.
+
+[Unit]
+Description=Renew mce's charging decision on the SmartCharge node (pdx246)
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=10min
+Unit=pdx246-charging-control.service

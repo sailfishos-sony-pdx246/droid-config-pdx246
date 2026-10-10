@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copies mce's charging decision to Sony's SmartCharge node (see
+# /usr/libexec/pdx246-charging-control.sh). Started by
+# pdx246-charging-control.path when mce writes and by
+# pdx246-charging-control.timer; nothing waits for it. After mce, so that the
+# script sees whether mce is running.
+
+[Unit]
+Description=Apply mce's charging decision to the SmartCharge node (pdx246)
+DefaultDependencies=no
+After=local-fs.target mce.service
+Before=shutdown.target
+Conflicts=shutdown.target
+# One start per mce write: the default start limit (3 starts in 180 s,
+# /etc/systemd/system.conf) would refuse quick changes (plug cycles, Settings).
+# (systemd 238: StartLimitIntervalSec belongs in [Unit].)
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/pdx246-charging-control.sh
+SyslogIdentifier=pdx246-charging-control
+# At boot the script waits for the node until 180 s after boot.
+TimeoutStartSec=240

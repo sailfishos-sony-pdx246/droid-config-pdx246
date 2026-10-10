@@ -544,10 +544,11 @@ DTMF over IMS (falls back to IRadio; to test with a voicemail/IVR menu). No emer
 
 ### D14. mce charging control
 
-`etc/mce/70-battery-pdx246.ini`: `/sys/class/battchg_ext/smart_charging_interruption`,
-EnableValue 0, DisableValue 1, the node and values of the LineageOS port's charging
-control (dev/device.mk:360-365). Keys as in zambezi's 70-battery-zambezi.ini. The ref's
-qcom-charge-control-fixup files are not needed.
+`etc/mce/70-battery-pdx246.ini`: ControlPath `/run/pdx246-charging-control`, EnableValue 0,
+DisableValue 1, copied to `/sys/class/battchg_ext/smart_charging_interruption` (below); node
+and values of the LineageOS port's charging control (dev/device.mk:360-365). Keys as in
+zambezi's 70-battery-zambezi.ini. The ref's qcom-charge-control-fixup has the same idea
+without the fixes below, so it is not used.
 
 Backlight (third boot, 2026-10-06): mce probes /sys/class/backlight/* once at startup
 (5.28 s), but panel0-backlight appears only when msm_drm's deferred panel bind completes
@@ -556,13 +557,48 @@ waits up to 10 s for it. `etc/mce/70-pdx246-hybris-features.ini` sets BackLight/
 mce-plugin-libhybris is built without libhybris (upstream `%bcond_with hybris`, LED code only),
 so those lookups only logged "undefined symbol mce_hybris_backlight_init".
 
-Charging limiter (sixth boot, 2026-10-07): not active. mce checks ControlPath once at startup
-(modules/charging.c mch_config_init), but /sys/class/battchg_ext only appears when battchg_ext's
-pmic_glink device probes after the ADSP is up (module loaded at 6.8 s, device at 17.2 s; the ADSP
-boot comes from droid-hal-init's early-boot). Waiting for it in mce's ExecStartPre held mce
-(and the user session behind it) for 10 s and still missed it, so that wait was removed again.
-TODO: a later trigger (e.g. a path/udev-triggered unit that re-applies the policy, or an mce
-change that re-probes ControlPath).
+Charging limiter (sixth boot, 2026-10-07; fix 2026-10-10, review wf_5ec9fde0-2f4): mce 1.116.5
+checks ControlPath once, when the charging module loads (modules/charging.c mch_config_init:
+access W_OK; on failure the path is freed for the session; the installed charging.so has two
+access calls and no inotify/udev). /sys/class/battchg_ext appears only when somc_battchg_ext's
+pmic_glink device probes after the ADSP is up (class_register at the end of somc_bcext_probe,
+somc_battchg_ext_main.c:3116-3118): 9.6-17.2 s after boot, 2.2-11.2 s after mce's check in four
+boots. Without a path mce reports "allowed", get_charging_suspendable is false and Settings >
+Battery hides the limit (jolla-settings battery/mainpage.qml:151,159), so mcetool showed the
+default mode "enable". Waiting in mce's ExecStartPre held the session 10 s and still missed it.
+
+Fix: mce writes its decision to /run/pdx246-charging-control, created if missing by
+`ExecStartPre=-` in `mce.service.d/51-pdx246-charging-control.conf` (tmpfiles.d is not ordered
+before mce, which has DefaultDependencies=no). That drop-in Wants= the path and the timer, so
+there are no wants links. `pdx246-charging-control.path` (PathChanged; DefaultDependencies=no,
+Before=mce, so it watches before mce's first write) starts `pdx246-charging-control.service`
+(oneshot, After=mce, StartLimitIntervalSec=0: the image allows 3 starts in 180 s) on every mce
+write; `pdx246-charging-control.timer` re-runs it 3 min after boot and 10 min after the last
+run. `usr/libexec/pdx246-charging-control.sh` waits for the node until 180 s after boot, sets
+smart_charging_activation to 1 if it is not, copies 0/1 and re-reads until the file is stable,
+rewrites 1 on every run, and does not follow a 1 while mce.service is not active (mce restores
+nothing on exit; a stale 1 would otherwise be renewed for ever). mce's start gains one sh exec.
+Driver facts (battchg_ext/somc_battchg_ext_main.c, somc_battchg_ext.h):
+- interruption writes are ignored, with success returned, while smart_charging_activation is 0
+  (:388-392, :1413-1436); only init.target.rc:127-128 sets it, after a `wait` of at most 5 s.
+- 1 = FCC vote 0 mA (SMART_EN_VOTER) plus Sony fake charging: the battery reads "Charging" at
+  about 0 mA while the limit holds, USB input stays on (:394-401). 0 = vote removed, 1 s timed
+  fake charging.
+- 30 min after the last write of 1 a watchdog drops the vote (:408-425, h:386); each write of 1
+  re-arms it, an equal vote is not re-sent (pmic-voter.c:440-457). mce writes only on a change,
+  hence the timer. Both clocks stop in suspend (awake time).
+- An ADSP restart keeps the class, the flag and the kernel vote (the glink state callback only
+  stores the state, :193-201; pmic_glink populates its children once).
+Known limits (INFERRED, untested): after an ADSP restart the ADSP may have dropped the 0 mA vote
+while the node still reads 1 (the driver re-sends nothing; qti_battery_charger re-sends its own
+FCC/ICL on subsys_up, :1536-1566); the next real 0/1 change (unplug, mode change) re-sends it.
+An mce write between the script's last read and its exit waits for the next timer run (at most
+about 11 min). If battchg_ext never probes, Settings still offers the limit; the script logs
+"does not exist". Sony's ueventd rules (odm ueventd.rc:52-60, 0664 system) stay unported: the
+nodes remain root 0644.
+Tested 2026-10-10 (phase A by hand 15:48-15:49: pause/resume, activation gate, bursts, garbage;
+phase B one reboot 15:53: mce has no 'not writable', the copier applied 1 at 10.54 s once the node
+appeared at 10.26 s, mce start 0.98 s as before, Startup finished 17.03 s vs 16.65-16.67 s).
 
 ### D15. connman
 
@@ -796,7 +832,7 @@ oFono; test incoming calls and SMS after the fix.
 
 overlays/, mount-overlays, overlays.service (fingerprint workaround for an AIDL-only
 HAL; pdx246 has HIDL 2.1); wait_for_keymaster (sparse-16 wait_for_keymint fits; the
-ref's wants link is broken); qcom-charge-control-fixup (D14); hwservicemanager.rc and
+ref's wants link is broken); qcom-charge-control-fixup (D14: own units); hwservicemanager.rc and
 vndservicemanager.rc LD_PRELOAD overrides (hybris-17.1 era; not in sparse-16);
 ofono-ril-ecclists.rc (duplicate of sparse-16 ecclist.rc); ld.config.txt (an Android 15
 dump; droid-hal packages the A16 linkerconfig, see D24 for why it ran only once);
@@ -956,8 +992,10 @@ headset off/on twice -> balanced disconnect/connect, a call without headset stay
   (`systemctl status pdx246-mark-slot`, then in the bootloader `fastboot getvar all`:
   slot-successful:a:yes), also on a boot that does not reach the UI; else the slot
   fails over after about 7 boots (D22).
-- **R10 charging control**: Settings > Battery limit toggles
-  smart_charging_interruption.
+- **R10 charging control** (D14): Settings > Battery shows the limit after boot. At >= 90 % on a
+  charger with the 90 % limit: /run/pdx246-charging-control and smart_charging_interruption 1,
+  battery "Charging" at about 0 mA; limit off: both 0. The node stays 1 over 45 min awake
+  (timer), unplug/replug gives 1 -> 0 -> 1, Started MCE as before.
 - **R11 on-device update**: one package upgrade with an unchanged kernel (only
   boot_a/vendor_boot_a/dtbo_a rewritten), then one with a new kernel (two boots;
   vendor_dlkm_a written on the second), and one modules-only rebuild (vendor_dlkm_a
@@ -1128,7 +1166,7 @@ The final contract all four adaptation repos follow (2026-10-04):
 | sparse/etc/connman/firewall.d/50-pdx246-usb-firewall.conf | new (syntax per connman-firewall.config(5), sailfishos/connman) | header |
 | sparse/etc/dconf/db/vendor.d/jolla-camera-hw.txt | new (dconf key as used by Jolla configs) | header |
 | sparse/etc/libncicore.conf | new | header |
-| sparse/etc/mce/70-battery-pdx246.ini | new (keys as in zambezi 70-battery-zambezi.ini; values from dev/device.mk) | header |
+| sparse/etc/mce/70-battery-pdx246.ini | new (keys as in zambezi 70-battery-zambezi.ini; values from dev/device.mk; ControlPath per D14) | header |
 | sparse/etc/ofono/binder.d/pdx246.conf | new (keys from mer-hybris/ofono-binder-plugin binder.conf) | header |
 | sparse/etc/pulse/arm_droid_card_custom.pa | new; `hw_volume=false` as in mer-hybris/droid-config-sony-zambezi@70a3767:sparse/etc/pulse/arm_droid_card_custom.pa (Jolla) | header |
 | sparse/etc/sensorfw/sensord.conf.d/60-sensors-pdx246.conf | new (layout of sailfishos/sensorfw config/60-sensors-DEVICE.conf) | header (`;` comments) |
@@ -1152,6 +1190,9 @@ The final contract all four adaptation repos follow (2026-10-04):
 | sparse/usr/lib/systemd/system/droid-bootctl.service.d/50-pdx246-timeout.conf | new | header |
 | sparse/usr/lib/systemd/system/sensorfwd.service.d/50-pdx246-wait-sensors-hal.conf | new | header |
 | sparse/usr/lib/systemd/system/mce.service.d/50-pdx246-wait-backlight.conf | new | header |
+| sparse/usr/lib/systemd/system/mce.service.d/51-pdx246-charging-control.conf | new | header |
+| sparse/usr/lib/systemd/system/pdx246-charging-control.{path,service,timer} | new (idea as the 10 V port's qcom-charge-control-fixup, read for the topic only) | header |
+| sparse/usr/libexec/pdx246-charging-control.sh | new | header |
 | sparse/etc/mce/70-pdx246-hybris-features.ini | new | header |
 | sparse/etc/task_profiles.json | copy of AOSP system/core/libprocessgroup/profiles/task_profiles.json (D23) | REUSE.toml: The Android Open Source Project, Apache-2.0 |
 | sparse/usr/libexec/droid-hybris/system/etc/init/boringssl_apex_hybris.rc | derived from AOSP init.rc service definitions (D24) | header: The Android Open Source Project + user, Apache-2.0 |

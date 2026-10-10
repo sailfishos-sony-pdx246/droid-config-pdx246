@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
+# SPDX-License-Identifier: Apache-2.0
+#
+# Starts pdx246-charging-control.service whenever mce writes its charging
+# decision to /run/pdx246-charging-control (mce opens, writes and closes the
+# file, so PathChanged= fires once per write; the creation of the file in
+# mce's ExecStartPre fires it too). Pulled in by
+# mce.service.d/51-pdx246-charging-control.conf and ordered before mce, so it
+# already watches when mce writes at startup. No default dependencies: they
+# would order mce after sysinit.target.
+# Not a path unit on the sysfs node itself: sysfs sends no inotify event when
+# a node is created or when the driver changes its value.
+
+[Unit]
+Description=Watch mce's charging decision (pdx246)
+DefaultDependencies=no
+After=local-fs.target
+Before=mce.service shutdown.target
+Conflicts=shutdown.target
+
+[Path]
+PathChanged=/run/pdx246-charging-control
+Unit=pdx246-charging-control.service
