@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-only
 #
 # /vendor_dlkm from the logical partition vendor_dlkm_a (slot a) of super, mapped by
 # dmsetup-dynparts.service. dhd skips this fstab entry (makefstab_skip_entries

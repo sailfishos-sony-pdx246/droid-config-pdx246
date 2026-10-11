@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-only
 #
 # Partition map for /usr/sbin/flash-partition (droid-hal-configs), which the
 # on-device update scripts in /var/lib/platform-updates call. Slot a only:

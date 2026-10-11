@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-only
 #
 # Device-specific additions to sparse-16's disabled_services.rc (which stays as
 # it is). droid-hal-init parses this directory before /vendor and /odm, so a

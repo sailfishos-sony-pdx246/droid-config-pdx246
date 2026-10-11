@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-only
 #
 # Marks slot a as successfully booted as soon as the boot HAL runs
 # (android.hardware.boot-service.qti, started by droid-hal-init), not only once

@@ -1,6 +1,6 @@
 #!/bin/sh
 # SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-only
 #
 # Pre-flight check for flashing Sailfish OS on the Sony Xperia 10 VI (pdx246).
 # flash.sh runs it (flash-config.sh: "run ./flash-preflight.sh") after

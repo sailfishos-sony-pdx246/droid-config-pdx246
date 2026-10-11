@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-only
 #
 # Labels of the back cameras in the order droidmedia enumerates them: the
 # Xperia 10 VI has a main (wide) and an ultra-wide back camera.

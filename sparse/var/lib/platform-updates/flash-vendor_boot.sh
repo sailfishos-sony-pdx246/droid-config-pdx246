@@ -1,6 +1,6 @@
 #!/bin/sh
 # SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-only
 #
 # Preinit oneshot, registered when vendor_boot.img (droid-hal-pdx246-vendor_boot) is upgraded.
 # Writes boot_a, vendor_boot_a and dtbo_a together, and only as a matched set;

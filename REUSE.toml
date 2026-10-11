@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-only
 
 # Copyright and licensing for the files that cannot say it themselves. Files
 # whose own header names every holder and licence are not listed (the spec,
@@ -9,19 +9,31 @@
 # The droid-configs-device/ submodule (mer-hybris/droid-hal-configs, Jolla Ltd.,
 # GPLv2 per its droid-configs.inc) is not part of this repository; see
 # SUBMODULES.md.
+#
+# Licences follow the code this builds on: the files written for this port
+# are GPL-2.0-only like droid-hal-configs (its packages are tagged GPLv2), the
+# documentation (README.md, NOTES.md, SUBMODULES.md) is CC-BY-SA-4.0. Files
+# from other owners keep their licence: Jolla's GPL-2.0-only, AOSP's
+# Apache-2.0, PulseAudio's LGPL-2.1-or-later.
 
 version = 1
 SPDX-PackageName = "droid-config-pdx246"
 SPDX-PackageSupplier = "Johannes Meyer zum Alten Borgloh"
 SPDX-PackageDownloadLocation = "NOASSERTION"
 
-# Written for this port, in formats that carry no header by convention or
-# whose consumers would read a header as data (rpm %files lists), and the
-# .gitmodules that "git submodule add" creates (SUBMODULES.md).
+# The documentation, written for this port.
 [[annotations]]
-path = ["NOTES.md", "SUBMODULES.md", "out-of-image-files.files", ".gitmodules"]
+path = ["NOTES.md", "SUBMODULES.md"]
 SPDX-FileCopyrightText = "Johannes Meyer zum Alten Borgloh"
-SPDX-License-Identifier = "Apache-2.0"
+SPDX-License-Identifier = "CC-BY-SA-4.0"
+
+# Written for this port, in a format whose consumer would read a header as
+# data (rpm %files list), and the .gitmodules that "git submodule add"
+# creates (SUBMODULES.md).
+[[annotations]]
+path = ["out-of-image-files.files", ".gitmodules"]
+SPDX-FileCopyrightText = "Johannes Meyer zum Alten Borgloh"
+SPDX-License-Identifier = "GPL-2.0-only"
 
 # Symlinks: systemd "wants" links and the audio compat link.
 [[annotations]]
@@ -32,7 +44,7 @@ path = [
     "sparse/usr/libexec/droid-hybris/system/lib64/hw/audio.primary.parrot.so",
 ]
 SPDX-FileCopyrightText = "Johannes Meyer zum Alten Borgloh"
-SPDX-License-Identifier = "Apache-2.0"
+SPDX-License-Identifier = "GPL-2.0-only"
 
 # Kickstart fragments that ssu pastes into the .ks file: a comment line would
 # become an %attachment entry (mic would look it up as a package). Both follow

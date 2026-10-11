@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-only
 #
 # Sony's TrimArea daemon (service tad in /odm/etc/init/init.sony-platform.rc)
 # runs as uid/gid 2997 (oem_2997, vendor_tad) and opens

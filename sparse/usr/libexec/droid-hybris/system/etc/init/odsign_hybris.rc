@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-only
 #
 # odsign (on-device signing of ART artifacts) has no job without ART and zygote.
 # init.rc's post-fs-data runs "start odsign" and then

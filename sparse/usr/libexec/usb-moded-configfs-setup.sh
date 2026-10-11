@@ -1,6 +1,6 @@
 #!/bin/sh
 # SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-only
 #
 # Prepare the configfs USB gadget for usb-moded.
 #

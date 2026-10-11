@@ -1202,6 +1202,13 @@ The final contract all four adaptation repos follow (2026-10-04):
 
 ## PROVENANCE
 
+Licences (changed 2026-10-11, the user's decision: each repository takes the
+licence of the official code it builds on): files written for this port
+("header" below means the user's own SPDX header) are GPL-2.0-only like
+droid-hal-configs, whose packages are tagged GPLv2 (they were Apache-2.0
+before); the documentation (README.md, NOTES.md, SUBMODULES.md) is
+CC-BY-SA-4.0; files from other owners keep their licence.
+
 | file | origin | licence handling |
 |---|---|---|
 | rpm/droid-config-pdx246.spec | derived from mer-hybris/droid-hal-configs@1dae7f2:droid-config-@DEVICE@.spec.template (Jolla Ltd.) | keeps Jolla (`SPDX-FileCopyrightText: Jolla Ltd.`, no year: the template history spans 2015-2026) + user; GPL-2.0-only (droid-configs.inc `License: GPLv2`) |
@@ -1210,11 +1217,11 @@ The final contract all four adaptation repos follow (2026-10-04):
 | kickstart/pack/pdx246/hybris | derived from mer-hybris/droid-config-sony-zambezi@70a3767:kickstart/pack/xqdc54/hybris (Jolla Ltd., no in-file notice) | header: Jolla Ltd. + user, GPL-2.0-only; derivation stated in the file |
 | kickstart/part/pdx246 | same content as mer-hybris/droid-config-sony-zambezi@70a3767:kickstart/part/xqdc54 | REUSE.toml: Jolla Ltd. only, GPL-2.0-only |
 | kickstart/attachment/pdx246 | adapted from mer-hybris/droid-config-sony-zambezi@70a3767:kickstart/attachment/xqdc54 | REUSE.toml: Jolla Ltd. + user, GPL-2.0-only |
-| out-of-image-files.files | new (list of the five files that exist) | REUSE.toml: user, Apache-2.0 |
-| .gitmodules (created by `git submodule add`, SUBMODULES.md) | new | REUSE.toml: user, Apache-2.0 |
-| sparse/boot/flash-config.sh | new (format documented in dcd sparse/boot/flash.sh) | header: user, Apache-2.0 |
-| sparse/boot/flash-preflight.sh | new | header: user, Apache-2.0 |
-| sparse/boot/flashing-README.txt | new | header: user, Apache-2.0 |
+| out-of-image-files.files | new (list of the five files that exist) | REUSE.toml: user, GPL-2.0-only |
+| .gitmodules (created by `git submodule add`, SUBMODULES.md) | new | REUSE.toml: user, GPL-2.0-only |
+| sparse/boot/flash-config.sh | new (format documented in dcd sparse/boot/flash.sh) | header: user, GPL-2.0-only |
+| sparse/boot/flash-preflight.sh | new | header: user, GPL-2.0-only |
+| sparse/boot/flashing-README.txt | new | header: user, GPL-2.0-only (shipped in the -flashing package, so the package licence) |
 | sparse/etc/connman/main.conf.d/50-pdx246.conf | new | header |
 | sparse/etc/connman/firewall.d/50-pdx246-usb-firewall.conf | new (syntax per connman-firewall.config(5), sailfishos/connman) | header |
 | sparse/etc/dconf/db/vendor.d/jolla-camera-hw.txt | new (dconf key as used by Jolla configs) | header |
@@ -1231,7 +1238,7 @@ The final contract all four adaptation repos follow (2026-10-04):
 | sparse/usr/libexec/usb-moded-configfs-setup.sh | new (written from init.qcom.usb.rc and usb-moded's configfs code; the ref's script not used) | header |
 | sparse/usr/libexec/droid-hybris/system/etc/init/disabled_services_device.rc | new (file name as in zambezi) | header |
 | sparse/usr/libexec/droid-hybris/system/etc/init/servicemanager_selinux_stubs.rc | derived from AOSP's servicemanager.rc, vndservicemanager.rc and hwservicemanager.rc (Android 16); setenv/override as in the refs' vndservicemanager.rc | header: The Android Open Source Project + user, Apache-2.0 |
-| sparse/usr/libexec/droid-hybris/system/lib64/hw/audio.primary.parrot.so | new symlink | REUSE.toml: user, Apache-2.0 |
+| sparse/usr/libexec/droid-hybris/system/lib64/hw/audio.primary.parrot.so | new symlink | REUSE.toml: user, GPL-2.0-only |
 | sparse/usr/lib/systemd/system/dmsetup-dynparts.service | new | header |
 | sparse/usr/lib/systemd/system/{system_root,system,system_ext,product,vendor,vendor_dlkm,odm}.mount | new (ref units not used) | header |
 | sparse/usr/lib/systemd/system/local-fs.target.wants/*.mount | new symlinks | REUSE.toml |
@@ -1264,10 +1271,11 @@ The final contract all four adaptation repos follow (2026-10-04):
 | sparse/var/lib/flash-partition/device-info | new (variables read by dcd flash-partition) | header |
 | sparse/var/lib/platform-updates/flash-{bootimg,vendor_boot,dtbo,vendor_dlkm}.sh, pdx246-kernel-set.sh | new | header |
 | .gitignore | new; same entries as zambezi .gitignore | header |
-| README.md | new | HTML-comment header |
-| NOTES.md, SUBMODULES.md | new | REUSE.toml |
+| README.md | new | HTML-comment header, CC-BY-SA-4.0 |
+| NOTES.md, SUBMODULES.md | new | REUSE.toml, CC-BY-SA-4.0 |
 | REUSE.toml | new | header |
 | LICENSES/Apache-2.0.txt, LICENSES/GPL-2.0-only.txt | licence texts, copied from dev/LICENSES (identical sha256 to the other adaptation repos) | REUSE convention |
+| LICENSES/CC-BY-SA-4.0.txt, LICENSES/LGPL-2.1-or-later.txt | licence texts in the form `reuse download` writes them, copied from the LineageOS 23.2 tree (packages/apps/Twelve/LICENSES/CC-BY-SA-4.0.txt, external/libcamera/LICENSES/LGPL-2.1-or-later.txt); the LGPL text was missing for default_sailfish.pa before | REUSE convention |
 
 No text was taken from sharks-dev's files; they were read for the list of topics
 only. Where values coincide with them, the Jolla original is cited (hw-settings.ini,

@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-only
 #
 # Locks VT switching. The kernel has CONFIG_VT=y (mer-kernel-check requires it)
 # with VT_CONSOLE_SLEEP but no fbdev, so nothing registers

@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-only
 #
 # Flash configuration for the Sony Xperia 10 VI (pdx246; XQ-ES54, XQ-ES72),
 # read by flash.sh (droid-hal-configs sparse/boot/flash.sh, which documents the

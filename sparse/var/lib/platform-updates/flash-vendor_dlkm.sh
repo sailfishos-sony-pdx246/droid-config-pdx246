@@ -1,6 +1,6 @@
 #!/bin/sh
 # SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-only
 #
 # Preinit oneshot: write /boot/vendor_dlkm.img (droid-hal-pdx246-vendor_dlkm)
 # into the logical partition vendor_dlkm_a of super. UNTESTED on the phone.

@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-only
 #
 # /dev/block/by-name/<GPT label> for the partitions of the boot device, as
 # Android's ueventd creates them for androidboot.boot_devices

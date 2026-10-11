@@ -1,6 +1,6 @@
 #!/bin/sh
 # SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-only
 #
 # qcacld-3.0 WLAN driver (qca_cld3_adrastea.ko, loaded from /vendor_dlkm by
 # vendor_modprobe.sh in droid-hal-init). The WLAN firmware runs on the WPSS

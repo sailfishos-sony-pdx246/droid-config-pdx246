@@ -1,6 +1,6 @@
 #!/bin/sh
 # SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-only
 #
 # Lock VT switching once the user session owns the console (NOTES D27).
 # Locking earlier keeps the console on tty1: the session's own switch to its

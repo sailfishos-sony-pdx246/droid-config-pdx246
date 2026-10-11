@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-only
 #
 # Tells the qcacld-3.0 WLAN driver that Wi-Fi may come up (see
 # wlan-driver-on.sh). Not ordered before connman or network.target: the

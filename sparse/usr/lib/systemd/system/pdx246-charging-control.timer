@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-only
 #
 # Sony's driver resumes charging 30 min after the last write of 1 to
 # smart_charging_interruption (somc_battchg_ext SMART_CHARGE_WDOG_DELAY_MS),

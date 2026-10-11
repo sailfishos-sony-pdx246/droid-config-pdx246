@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-only
 #
 # Starts pdx246-charging-control.service whenever mce writes its charging
 # decision to /run/pdx246-charging-control (mce opens, writes and closes the
