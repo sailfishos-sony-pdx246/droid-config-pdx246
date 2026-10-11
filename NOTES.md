@@ -806,6 +806,20 @@ links; the UFS BSG node for the boot HAL from dcd 997-droid-bsg.rules.
   bootloader red-states a recovery with a kernel, findings boot-layout FACTS). The
   img-recovery %post then only logs that the script is missing
   (initrd .inc:415, `|| :`).
+- **Found on the phone 2026-10-11 (kernel round A, rpm -U --force + fastboot):**
+  - BusyBox `tr` (the phone's /usr/bin/tr) has no character classes: `tr -c '[:print:]' '\n'`
+    treats `[:print:]` as a literal set and turns every byte into a newline. So
+    `ks_boot_img_release` (pdx246-kernel-set.sh) reads no release on the phone and the boot
+    scripts would always stop with "cannot read the kernel release" (safe, but the path cannot
+    work). Fix before any update channel: `grep -a -o -m 1 'Linux version [0-9][^ ]*'` (or
+    BusyBox `strings`), then test it on the phone.
+  - img-recovery's %post does register `flash-recoveryimg.sh` as a preinit oneshot on upgrade
+    (a symlink to the missing script); it stays registered and fails each boot. Moved aside
+    with the other four oneshots to /root/pdx246-backups/oneshot-roundA-2026-10-11/ on the
+    phone. Better: no oneshot for recovery at all (override the %post or drop the package).
+  - img-boot 5.10.269-1 had to be installed with `--force` (same version-release, as
+    expected from the TODO above); the four flash scripts were then registered and moved
+    aside before the reboot, so none of them ran.
 
 ### D22. delete_file_pdx246.list (dummy_netd); slot a marked once the boot HAL runs
 
