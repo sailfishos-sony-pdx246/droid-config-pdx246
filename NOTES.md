@@ -987,7 +987,9 @@ seat0's active session (`usr/libexec/pdx246-vt-lockswitch.sh`, up to 120 s; with
 switching unlocked): the first version locked at 4.97 s, before the user session switched from
 tty1 to its VT 7, which left seat0 without an active session (2026-10-10, repaired by hand). With
 the wait: 'VT switching locked (seat0 session 1 on tty7)' at 15.1 s, session active, mce not
-delayed. Nothing on Sailfish switches VTs after that. A/B 2026-10-10 (unplugged, display off, ~37 min after locking by hand): 0 new
+delayed. Nothing on Sailfish switches VTs after that. Overnight 2026-10-10/11 (unplugged 12.02 h,
+display off): 10.4 mA average and 98.7 % suspended, against 15.2 mA and 91.5 % on 2026-10-09/10;
+no mce_bluez_wait event overnight. A/B 2026-10-10 (unplugged, display off, ~37 min after locking by hand): 0 new
 mce_bluez_wait events (30 before), 0 aborts by it (26 before), 41 suspends ok / 3 failed (RTC,
 timerfd, charger), awake gap resume -> next suspend median 2.05 s before (13 of 40 at 1.9-2.3 s)
 vs 0.00 s after (none at ~2 s), session stayed active on tty7, no 'Can't switch VCs'. Clean fix
