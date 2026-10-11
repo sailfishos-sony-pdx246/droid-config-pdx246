@@ -1,9 +1,8 @@
 # SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
 # SPDX-License-Identifier: GPL-2.0-only
 #
-# Creates the configfs gadget skeleton usb-moded needs, waits for the
-# charger's "usb" power supply and, as a bring-up aid, forces the dwc3 glue
-# into peripheral mode when no UDC appears (see the script). Pulled in by
+# Creates the configfs gadget skeleton usb-moded needs and waits for the UDC
+# and the charger's "usb" power supply (see the script). Pulled in by
 # usb-moded.service.d/50-configfs-setup.conf; usb-moded starts after it.
 
 [Unit]

@@ -40,16 +40,15 @@ echo 900 > "$G/configs/b.1/MaxPower" 2>/dev/null || :
 # would not enumerate on a USB 3 port. Keep the gadget at high speed.
 echo high-speed > "$G/max_speed" 2>/dev/null || :
 
-# Bring-up aid, to drop once R4 is settled (NOTES.md): the UDC a600000.dwc3
-# appears when the dwc3-msm glue gets its first role, from the Type-C role
-# switch (ucsi_glink sets one when it registers its port, also without a
-# cable) or from a write to the glue's mode. ucsi_glink and the battery
-# charger's "usb" power supply both come up with the ADSP (pmic_glink), 2-11 s
-# after droid-hal-init in the boots seen so far. So: wait for the UDC up to
-# 30 s, but no longer than 3 s after the "usb" power supply has appeared; if it
-# is still absent, force peripheral and log it. The write is a one-off role
-# change: the next Type-C event (unplug, OTG device) overrides it. In host mode
-# (OTG device attached) there is no UDC by design: do not force.
+# The UDC a600000.dwc3 appears when the dwc3-msm glue gets its first role from
+# the Type-C role switch (ucsi_glink sets one when it registers its port, also
+# without a cable). ucsi_glink and the battery charger's "usb" power supply both
+# come up with the ADSP (pmic_glink), 2-11 s after droid-hal-init in the boots
+# seen so far. Wait for the UDC up to 30 s, but no longer than 3 s after the
+# "usb" power supply has appeared, and log what happened. In host mode (OTG
+# device attached) there is no UDC by design. (Until 2026-10-11 a fallback
+# forced the glue to peripheral here when the UDC stayed missing; it had not
+# fired in six boots, NOTES.md R4.)
 UDC=/sys/class/udc/a600000.dwc3
 GLUE_MODE=/sys/bus/platform/devices/a600000.ssusb/mode
 PSY=/sys/class/power_supply/usb
@@ -71,17 +70,7 @@ if [ -e "$UDC" ]; then
 elif [ "$role" = host ]; then
     echo "usb-moded-configfs-setup: glue in host mode (OTG device attached); not forcing peripheral" >&2
 else
-    echo "usb-moded-configfs-setup: no UDC a600000.dwc3 after $n s (glue mode '$role'; typec: $typec); writing peripheral to $GLUE_MODE (bring-up fallback)" >&2
-    if echo peripheral > "$GLUE_MODE"; then
-        n=0
-        while [ ! -e "$UDC" ] && [ $n -lt 5 ]; do
-            sleep 1
-            n=$((n + 1))
-        done
-        [ -e "$UDC" ] || echo "usb-moded-configfs-setup: UDC a600000.dwc3 still missing after the peripheral write" >&2
-    else
-        echo "usb-moded-configfs-setup: writing $GLUE_MODE failed" >&2
-    fi
+    echo "usb-moded-configfs-setup: no UDC a600000.dwc3 after $n s (glue mode '$role'; typec: $typec); USB modes work once the Type-C role switch creates it" >&2
 fi
 
 # usb-moded picks its charger device once at startup and ignores later "add"

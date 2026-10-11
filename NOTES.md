@@ -450,7 +450,8 @@ Confirmed on the seventh boot: the volume keys work in calls and the speakerphon
   and the hybris init.rc never triggers zygote-start (hybris-patches system/core
   0015:31-32). `usb-moded-configfs-setup.service` (Before=usb-moded, pulled in by a
   drop-in) creates them. Written new; the ref has a longer script for the same gap.
-- Peripheral-mode fallback (bring-up aid, to drop once R4 is settled): runtime role
+- Peripheral-mode fallback (bring-up aid; **dropped 2026-10-11**: it had not fired in six
+  boots, the UDC appeared after ~3 s without a mode write each time): runtime role
   switching through ucsi_glink is verified (dwc3-msm IPC log DEVICE->NONE->DEVICE on a
   replug, notes/analysis/usb-moded-review-2026-10-07/verify.md issue 10), but no boot yet
   has shown the UDC a600000.dwc3 appearing without any mode write (the debug aid writes
@@ -996,6 +997,9 @@ vs 0.00 s after (none at ~2 s), session stayed active on tty7, no 'Can't switch 
 later in the kernel fragment: '# CONFIG_VT_CONSOLE is not set' (VT_CONSOLE_SLEEP depends on it;
 pm_prepare_console becomes a stub); then drop the unit and drop-in. That needs a kernel round
 (new release string: hybris-boot, vendor_boot and vendor_dlkm together).
+**Done 2026-10-11:** kernel hybris-23.2 d78a574 disables CONFIG_VT_CONSOLE; the unit, its
+script and the mce drop-in are removed (test after the kernel round: no 'pm_prepare_console'
+switch, seat0 session stays active, mce_bluez_wait events stay at 0 overnight).
 
 ---
 
@@ -1251,9 +1255,6 @@ CC-BY-SA-4.0; files from other owners keep their licence.
 | sparse/usr/lib/systemd/system/sensorfwd.service.d/50-pdx246-wait-sensors-hal.conf | new | header |
 | sparse/usr/lib/systemd/system/mce.service.d/50-pdx246-wait-backlight.conf | new | header |
 | sparse/usr/lib/systemd/system/mce.service.d/51-pdx246-charging-control.conf | new | header |
-| sparse/usr/lib/systemd/system/mce.service.d/52-pdx246-vt-lockswitch.conf | new | header |
-| sparse/usr/lib/systemd/system/pdx246-vt-lockswitch.service | new | header |
-| sparse/usr/libexec/pdx246-vt-lockswitch.sh | new | header |
 | sparse/usr/lib/systemd/system/pdx246-charging-control.{path,service,timer} | new (idea as the 10 V port's qcom-charge-control-fixup, read for the topic only) | header |
 | sparse/usr/libexec/pdx246-charging-control.sh | new | header |
 | sparse/etc/mce/70-pdx246-hybris-features.ini | new | header |
