@@ -17,22 +17,26 @@ data, apps and files) and replaces the boot chain of slot a.
 2. Install LineageOS 23.2 for pdx246 and make sure it runs from SLOT A,
    complete with its super partition (system_a, system_ext_a, product_a,
    vendor_a, vendor_dlkm_a, odm_a). Sailfish OS runs on top of these Android
-   partitions of slot a and never uses slot b. An install that went to slot b
-   (for example an OTA or sideload, which write the inactive slot) has to be
-   repeated so that slot a holds it. The LineageOS flash procedure also writes
-   vbmeta_a with verification disabled, which the unsigned Sailfish OS boot
-   image needs.
+   partitions of slot a and never uses slot b. Use the release this image is
+   made for, LineageOS 23.2 of 2026-09-24:
+     https://github.com/johanneszab/lineageos-pdx246-releases/releases/tag/v23.2-20260924
+   Install it the usual LineageOS way, with its recovery.img and an
+   "adb sideload" of the OTA zip. A sideload and an OTA update both write the
+   inactive slot: an install that went to slot b has to be repeated so that
+   slot a holds it. The LineageOS install also writes vbmeta_a with
+   verification disabled, which the unsigned Sailfish OS boot image needs.
 
 3. After installing LineageOS to slot a, boot it to the home screen once and
    leave it running for a minute, so that the Virtual A/B merge completes.
    Until then fastbootd refuses to flash userdata.
 
-4. Keep the LineageOS images of exactly that release (boot, vendor_boot,
-   dtbo, vendor_dlkm, recovery) to go back. Going back is all or nothing as
-   well: the Sailfish OS kernel and the LineageOS modules do not mix.
-   Slot b holds no bootable LineageOS (Virtual A/B keeps only one copy of
-   the dynamic partitions), so these saved slot-a images are the only way
-   back.
+4. Download that release's images boot.img, vendor_boot.img, dtbo.img,
+   vendor_dlkm.img and recovery.img from the same page and check them
+   against its SHA256SUMS. They are the only way back: slot b holds no
+   bootable LineageOS (Virtual A/B keeps only one copy of the dynamic
+   partitions), and the Sailfish OS kernel and the LineageOS modules do not
+   mix, so going back means flashing all of them. Flashing again over
+   Sailfish OS needs the first three (see below).
 
 5. Use a recent Android platform-tools fastboot (version 34 or newer).
 
