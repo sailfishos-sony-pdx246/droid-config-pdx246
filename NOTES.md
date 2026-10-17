@@ -740,7 +740,8 @@ links; the UFS BSG node for the boot HAL from dcd 997-droid-bsg.rules.
 ### D21. On-device updates (flash-partition, platform-updates)
 
 - `var/lib/flash-partition/device-info`: boot_a sda72, dtbo_a sda77, vendor_boot_a sda79
-  (by-name-live.txt); slot a only. CPUCHECK_STRING "Parrot" (TODO D3): flash-partition
+  (by-name-live.txt); slot a only. CPUCHECK_STRING "Parrot" (D3, checked on the phone
+  2026-10-17: DT model "Qualcomm Technologies, Inc. Parrot QRD"): flash-partition
   only flashes when the string is in /proc/cpuinfo or the DT model
   (dcd/sparse/usr/sbin/flash-partition:70-80); the dtb/dtbo sources hold only Qualcomm
   "Parrot" model strings (rg in kernel/sony/sm6450-devicetrees; no Sony model in LOS
@@ -767,8 +768,8 @@ links; the UFS BSG node for the boot HAL from dcd 997-droid-bsg.rules.
   /proc/cpuinfo nor the DT model (dcd flash-partition:137, 212-214), and it does not
   check dd. So both ks_flash_boot_set and flash-vendor_dlkm.sh first check
   `grep -qs "$CPUCHECK_STRING" /sys/firmware/devicetree/base/model /proc/cpuinfo`
-  (`ks_cpucheck`) and fail early with a clear message (the oneshot stays registered);
-  "Parrot" is still a guess (TODO D3).
+  (`ks_cpucheck`) and fail early with a clear message (the oneshot stays registered).
+  On the phone the DT model matches; /proc/cpuinfo has no Hardware line on arm64.
 - Same-boot guard: a rebuild that changes only the modules keeps the kernel release
   (the release names only the kernel commit). Its upgrade registers
   flash-vendor_dlkm.sh, which would then write vendor_dlkm_a in the same preinit pass
@@ -802,21 +803,35 @@ links; the UFS BSG node for the boot HAL from dcd 997-droid-bsg.rules.
   version-release. Before any update channel exists, img-boot's release must change
   per build (tags, or derived from the droid-hal release). Until then, do kernel
   updates with fastboot (TODO R11).
-- No `flash-recoveryimg.sh`: hybris-recovery.img must never reach recovery_a (the
-  bootloader red-states a recovery with a kernel, findings boot-layout FACTS). The
-  img-recovery %post then only logs that the script is missing
-  (initrd .inc:415, `|| :`).
+- hybris-recovery.img must never reach recovery_a (the bootloader red-states a
+  recovery with a kernel, findings boot-layout FACTS). The img-recovery %post registers
+  `flash-recoveryimg.sh` on every upgrade (initrd .inc:492-495), and on 2026-10-11 the
+  phone had such a registration as a dangling link that failed at every boot. Since
+  2026-10-17 droid-config ships a `flash-recoveryimg.sh` that writes nothing: it logs,
+  exits 0, and the job removes itself after one boot.
 - **Found on the phone 2026-10-11 (kernel round A, rpm -U --force + fastboot):**
   - BusyBox `tr` (the phone's /usr/bin/tr) has no character classes: `tr -c '[:print:]' '\n'`
     treats `[:print:]` as a literal set and turns every byte into a newline. So
     `ks_boot_img_release` (pdx246-kernel-set.sh) reads no release on the phone and the boot
     scripts would always stop with "cannot read the kernel release" (safe, but the path cannot
     work). Fix before any update channel: `grep -a -o -m 1 'Linux version [0-9][^ ]*'` (or
-    BusyBox `strings`), then test it on the phone.
+    BusyBox `strings`), then test it on the phone. **Fixed 2026-10-17** with BusyBox grep
+    -a -o (on the phone: 5.10.269-gki-ged8ecc8be140 from /boot/hybris-boot.img in 4 s; the
+    old tr pipeline read nothing; `strings` also works, 2 s).
   - img-recovery's %post does register `flash-recoveryimg.sh` as a preinit oneshot on upgrade
     (a symlink to the missing script); it stays registered and fails each boot. Moved aside
     with the other four oneshots to /root/pdx246-backups/oneshot-roundA-2026-10-11/ on the
     phone. Better: no oneshot for recovery at all (override the %post or drop the package).
+    **Done 2026-10-17** the simpler way: a no-op `flash-recoveryimg.sh` (see above); the
+    package stays, because the image zip ships hybris-recovery.img as the debug image.
+- **Checked on the phone 2026-10-17 (read-only, release image 202610121853):** slot a and
+  the CPU check pass; `ks_part_matches` finds boot_a, vendor_boot_a and dtbo_a equal to
+  /boot's images (1-2 s each, so BusyBox `head -c | cmp -s -` works); device-info's map
+  equals /dev/disk/by-partlabel (boot_a sda72, dtbo_a sda77, vendor_boot_a sda79; super
+  sda95, the vendor_dlkm script's fallback); flash-partition, add-preinit-oneshot,
+  parse-android-dynparts, dmsetup, blockdev, od, simg2img and strings are installed;
+  add-preinit-oneshot (oneshot 0.6.12) refuses a job that is not executable and links
+  the others into /etc/oneshot.d/preinit, which is empty on a fresh install.
   - img-boot 5.10.269-1 had to be installed with `--force` (same version-release, as
     expected from the TODO above); the four flash scripts were then registered and moved
     aside before the reboot, so none of them ran.
@@ -1026,8 +1041,8 @@ switch, seat0 session stays active, mce_bluez_wait events stay at 0 overnight).
   `[udev] extcon_tracking = 0` (D12).
 - **D2 ALSA card id**: `cat /proc/asound/cards` -> exact id in
   99-pulseaudio-ignore-builtin-card.rules.
-- **D3 DT model**: `cat /sys/firmware/devicetree/base/model` -> CPUCHECK_STRING in
-  device-info (the current "Parrot" is a guess from the sources).
+- ~~D3 DT model~~ (closed 2026-10-17): "Qualcomm Technologies, Inc. Parrot QRD", so
+  CPUCHECK_STRING "Parrot" in device-info matches.
 - **D4 LED**: `ls /sys/class/leds`, which controller (aw2016 or qti-tri-led) drives
   red/green/blue -> mce LED backend ini (not written yet) and hw-settings [LED].
 - **D5 second SIM**: is slot 2 a physical SIM on XQ-ES54 and XQ-ES72 or eSIM only? ->
@@ -1074,7 +1089,9 @@ switch, seat0 session stays active, mce_bluez_wait events stay at 0 overnight).
   oneshots run with /proc/bootconfig and /proc/sys/kernel/random/boot_id readable and
   dmsetup/blockdev/od/cmp/head available, and that the read-back checks pass. Until
   then, and until img-boot's release changes per build (D21), do kernel updates with
-  fastboot.
+  fastboot. Read-only part done 2026-10-17 (D21): the tools exist, the CPU check, slot
+  check, release extraction (after the BusyBox fix) and read-back comparison work on the
+  phone. Still to run: the three upgrades themselves.
 - **R12 NFC** tag reading; **R13** camera labels; **R14** flashlight.
 - **R15 fastbootd reachable** from the build VM (USB passthrough must include the
   recovery's fastbootd USB ID), `fastboot --set-active=a` and `fastboot reboot fastboot`
@@ -1116,7 +1133,8 @@ switch, seat0 session stays active, mce_bluez_wait events stay at 0 overnight).
   early connects while the HAL initialises (iddd stubbed, ~1 s IDD retries). Research:
   notes/analysis/fingerprint-research-2026-10-09/. Fallback if ever needed:
   sailfish-fpd-community + droid-biometry-fp (Nagara).
-- **B6** img-boot release per build before any update channel (D21; not implemented).
+- ~~B6~~ img-boot release per build (D21): done 2026-10-17 in droid-hal-img-boot-pdx246
+  (a build stamp like droid-hal's rel_date, via its patch 0002 to the .inc).
 
 ---
 
@@ -1155,8 +1173,8 @@ The final contract all four adaptation repos follow (2026-10-04):
   CPUCHECK_STRING, waits for the first boot of its kernel and for a boot after the
   vendor_boot_a rewrite, and verifies the written partition. img-boot's spec Requires
   `droid-hal-pdx246-vendor_dlkm` with the same version-release as `-vendor_boot` and
-  `-kernel-dtbo`; its %post registers flash-bootimg.sh. Open: img-boot's Release must
-  change per build before any update channel (B6).
+  `-kernel-dtbo`; its %post registers flash-bootimg.sh. img-boot's Release changes
+  per build since 2026-10-17 (B6).
 - **USB in the running OS** (decision D12): usb-moded-configfs-setup.sh waits for
   /sys/class/udc/a600000.dwc3 (up to 30 s, at most 3 s after the charger's `usb` power supply
   appears) and, if it is absent and the glue is not in host mode, writes `peripheral` to

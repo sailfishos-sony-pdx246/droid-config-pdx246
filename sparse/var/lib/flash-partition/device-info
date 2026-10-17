@@ -8,9 +8,9 @@
 # flash-partition flashes only when CPUCHECK_STRING occurs in /proc/cpuinfo or
 # in /sys/firmware/devicetree/base/model (so never on the image build host).
 # pdx246's dtb and dtbo are built from kernel/sony/sm6450-devicetrees, whose
-# model strings are all Qualcomm ones ("Qualcomm Technologies, Inc. Parrot ...").
-# TODO(device): replace with the exact model (adb root on LineageOS, or any
-# root shell: cat /sys/firmware/devicetree/base/model).
+# model strings are all Qualcomm ones. Checked on the phone under Sailfish OS
+# (2026-10-17): the DT model reads "Qualcomm Technologies, Inc. Parrot QRD", and
+# /proc/cpuinfo has no Hardware line on arm64, so the model is what matches.
 CPUCHECK_STRING="Parrot"
 
 # flash-partition requires entry 1; the other indices are the sdaN numbers.

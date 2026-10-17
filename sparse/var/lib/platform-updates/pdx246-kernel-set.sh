@@ -62,12 +62,13 @@ ks_on_slot_a() {
 # Kernel release of the kernel in a boot image. pdx246's boot image carries the
 # uncompressed arm64 Image (BOARD_KERNEL_IMAGE_NAME := Image), whose
 # linux_banner reads "Linux version <release> (..." (the image also holds the
-# format string "Linux version %s (%s)", hence the digit). Tested on the
-# LineageOS boot.img: 5.10.269-gki-gf985b93da718.
-# (tr and plain grep only, so that busybox variants work too.)
+# format string "Linux version %s (%s)", hence the digit). The phone's grep is
+# BusyBox: -a and -o work, while its tr has no character classes, so the
+# earlier `tr -c '[:print:]'` filter read nothing there. Tested on the phone
+# against /boot/hybris-boot.img: 5.10.269-gki-ged8ecc8be140.
 ks_boot_img_release() {
-    LC_ALL=C tr -c '[:print:]' '\n' < "$1" 2>/dev/null \
-        | grep -m 1 '^Linux version [0-9]' | cut -d ' ' -f 3
+    grep -a -o -m 1 'Linux version [0-9][^ ]*' "$1" 2>/dev/null \
+        | head -n 1 | cut -d ' ' -f 3
 }
 
 # Current boot_id (changes at every boot).
