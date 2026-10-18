@@ -137,8 +137,14 @@ ks_dlkm_map() {
     super=/dev/disk/by-partlabel/super
     [ -b "$super" ] || super=/dev/sda95
     [ -b "$super" ] || { ks_log "no super block device"; return 1; }
-    entry=$(parse-android-dynparts "$super" | tr ';' '\n' | grep '^dynpart-vendor_dlkm_a,')
-    [ -n "$entry" ] || { ks_log "vendor_dlkm_a not found in the super metadata"; return 1; }
+    # parse-android-dynparts reports every empty _b partition on stderr
+    # ("Skipping zero-length logical partition"); keep that off the console and
+    # show only its last message if vendor_dlkm_a is not found.
+    entry=$(parse-android-dynparts "$super" 2>/dev/null | tr ';' '\n' | grep '^dynpart-vendor_dlkm_a,')
+    if [ -z "$entry" ]; then
+        ks_log "vendor_dlkm_a not found in the super metadata ($(parse-android-dynparts "$super" 2>&1 >/dev/null | tail -n 1))"
+        return 1
+    fi
     rw=$(echo "$entry" | sed -e "s/^dynpart-vendor_dlkm_a,/$KS_DM_NAME,/" \
                              -e 's/^\([^,]*,[^,]*,[^,]*,\)ro,/\1rw,/')
     dmsetup remove "$KS_DM_NAME" >/dev/null 2>&1 || :
