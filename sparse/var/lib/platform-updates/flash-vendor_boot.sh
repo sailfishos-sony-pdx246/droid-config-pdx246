@@ -3,10 +3,10 @@
 # SPDX-License-Identifier: GPL-2.0-only
 #
 # Preinit oneshot, registered when vendor_boot.img (droid-hal-pdx246-vendor_boot) is upgraded.
-# Writes boot_a, vendor_boot_a and dtbo_a together, and only as a matched set;
-# see pdx246-kernel-set.sh. Exits non-zero (and so runs again at the next
-# boot) while the installed images do not form a set.
+# Writes the whole matched set (vendor_dlkm_a, vendor_boot_a, dtbo_a, boot_a)
+# in this one preinit pass, after checking all of it; see pdx246-kernel-set.sh.
+# The other scripts of the set then find it up to date.
 
 . /var/lib/platform-updates/pdx246-kernel-set.sh
 
-ks_flash_boot_set flash-vendor_boot.sh
+ks_flash_set flash-vendor_boot.sh

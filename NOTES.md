@@ -739,6 +739,40 @@ links; the UFS BSG node for the boot HAL from dcd 997-droid-bsg.rules.
 
 ### D21. On-device updates (flash-partition, platform-updates)
 
+**Redesign 2026-10-18 (supersedes the two-boot design below, which was never run on the
+phone).** R11's first test (T1) showed how Sailfish OS's /sbin/preinit (jolla-sessions-qt5
+1.4.25, `run_preinit_oneshot`) really runs the jobs: in `find` order; a job that exits 0 is
+removed, one that exits non-zero becomes `/etc/oneshot.d/preinit/<name>.failed` and is not run
+again; afterwards preinit always reboots (`reboot_with_same_reason`, `reboot -f`), so the pass's
+kernel log is lost. The old design (flash-vendor_dlkm.sh exits 1 until the first boot of the new
+kernel; same-boot guard) would have left a new kernel with the old vendor_dlkm. Now: because the
+pass ends in a reboot before anything mounts /vendor_dlkm, `ks_flash_set` (pdx246-kernel-set.sh)
+writes the whole set in that pass. It checks everything first (slot a, CPU check, all four images
+and vendor_dlkm.release present, hybris-boot.img's release = vendor_dlkm.release, /vendor_dlkm not
+mounted unless KS_DRY_RUN=1, vendor_dlkm_a mapped privately, the unsparsed image fits), then
+writes whatever differs in the order vendor_dlkm_a, vendor_boot_a, dtbo_a, boot_a, each verified
+after `blockdev --flushbufs`; the first failure stops the pass (mixed set: fastboot). All four
+job scripts just call it; whichever runs first writes, the others find the set up to date. It
+logs to the kernel log and to /var/log/pdx246-platform-updates.log. No .pdx246-set-written any
+more. Dry runs on the phone (2026-10-18, live system, KS_DRY_RUN=1): the installed set "on the
+partitions; nothing to write" (9 s, the private mapping works), a mismatched boot image refused,
+and the T2 set refused because **vendor_dlkm.img grows between builds**: sized to its content
+(ext4 100 % full, 51 free blocks), the release's image is 69,554,176 bytes and a rebuild of the
+same source 69,558,272, while fastbootd sizes vendor_dlkm_a to the image it flashed. Fix in the
+device tree (hybris-23.2): `BOARD_VENDOR_DLKMIMAGE_PARTITION_SIZE := 100663296` (96 MiB; super has
+~10.6 GiB free). A phone needs one fastbootd flash of a 96 MiB vendor_dlkm before on-device kernel
+updates work (the next release image's flash.sh does it). With a fixed size the build makes
+vendor_dlkm.img an Android sparse image (first build: 69,750,932 bytes, 24,576 blocks of 4096 =
+96 MiB unsparsed; 10 chunks, 3 of them "don't care", 7,547 blocks). fastbootd skips "don't care"
+chunks (the old bytes stay), while the phone's simg2img (droid-hal-pdx246-tools, /usr/bin) writes
+zeros there. So after a fastboot flash of the sparse image, `ks_part_matches` finds vendor_dlkm_a
+different and the next pass rewrites it once (harmless, ~96 MiB); flashing the image unsparsed
+(host `simg2img`) leaves the partition byte-identical to what the phone compares against.
+**Tested on the phone 2026-10-18 (R11): ed8ecc8 -> test kernel gd2f1fa4d9266 -> ed8ecc8, each
+with `rpm -U` and one `systemctl reboot`; the first job wrote and verified the set in ~3 s,
+the others found it up to date, preinit rebooted into it.** A dry run takes ~10 s (simg2img
+of the sparse image plus four read-back comparisons) and leaves no mapping or raw file.
+
 - `var/lib/flash-partition/device-info`: boot_a sda72, dtbo_a sda77, vendor_boot_a sda79
   (by-name-live.txt); slot a only. CPUCHECK_STRING "Parrot" (D3, checked on the phone
   2026-10-17: DT model "Qualcomm Technologies, Inc. Parrot QRD"): flash-partition
@@ -1082,16 +1116,20 @@ switch, seat0 session stays active, mce_bluez_wait events stay at 0 overnight).
   charger with the 90 % limit: /run/pdx246-charging-control and smart_charging_interruption 1,
   battery "Charging" at about 0 mA; limit off: both 0. The node stays 1 over 45 min awake
   (timer), unplug/replug gives 1 -> 0 -> 1, Started MCE as before.
-- **R11 on-device update**: one package upgrade with an unchanged kernel (only
-  boot_a/vendor_boot_a/dtbo_a rewritten), then one with a new kernel (two boots;
-  vendor_dlkm_a written on the second), and one modules-only rebuild (vendor_dlkm_a
-  written one boot after vendor_boot_a, see `.pdx246-set-written`). Confirm preinit
-  oneshots run with /proc/bootconfig and /proc/sys/kernel/random/boot_id readable and
-  dmsetup/blockdev/od/cmp/head available, and that the read-back checks pass. Until
-  then, and until img-boot's release changes per build (D21), do kernel updates with
-  fastboot. Read-only part done 2026-10-17 (D21): the tools exist, the CPU check, slot
-  check, release extraction (after the BusyBox fix) and read-back comparison work on the
-  phone. Still to run: the three upgrades themselves.
+- **R11 on-device update**: DONE 2026-10-18 with the single-pass design (D21). Baseline by
+  fastboot: the ed8ecc8 set from the build of 2026-10-18 with vendor_dlkm_a resized to 96 MiB
+  (unsparsed image, so the partition is byte-identical; the dry run then reported all four
+  partitions up to date). Then `rpm -Uvh --oldpackage` to a test kernel (gd2f1fa4d9266, an
+  empty commit on a local branch) and `rpm -Uvh` back to ged8ecc8be140, one `systemctl
+  reboot` each: in preinit the first job (flash-vendor_boot.sh, `find` order) wrote and
+  verified vendor_dlkm_a, vendor_boot_a, dtbo_a and boot_a in about 3 s, the other three
+  found the set up to date, flash-recoveryimg.sh did nothing, and preinit rebooted into the
+  new set (73-79 s from the reboot command to SSH). Afterwards: the new uname, 349 modules
+  loaded from vendor_dlkm (vermagic), no `.failed` jobs, both modems online, wlan0 present,
+  the dry run "on the partitions"; the user tested a call, sound, Wi-Fi and the camera after
+  the return. The first try on 2026-10-17 (two-boot design) is what showed the preinit rules.
+  Not run separately: a modules-only rebuild with the same release and an initrd-only
+  img-boot update; both take the same path (whatever differs from its image is written).
 - **R12 NFC** tag reading; **R13** camera labels; **R14** flashlight.
 - **R15 fastbootd reachable** from the build VM (USB passthrough must include the
   recovery's fastbootd USB ID), `fastboot --set-active=a` and `fastboot reboot fastboot`
@@ -1166,15 +1204,17 @@ The final contract all four adaptation repos follow (2026-10-04):
   re-flash over Sailfish OS via the saved LineageOS boot_a/vendor_boot_a/dtbo_a if
   fastbootd is not reached; interrupted run: reconnect, `fastboot reboot bootloader`,
   rerun; slot b holds no bootable LineageOS, rollback = the saved slot-a set.
-- **On-device kernel updates** (option P, decision D21): ks_flash_boot_set writes
-  boot_a/vendor_boot_a/dtbo_a as a set, gated on /boot/vendor_dlkm.release, verified
-  with ks_part_matches, and records the boot_id in .pdx246-set-written when it rewrites
-  vendor_boot_a; `-vendor_dlkm`'s %post registers flash-vendor_dlkm.sh, which checks
-  CPUCHECK_STRING, waits for the first boot of its kernel and for a boot after the
-  vendor_boot_a rewrite, and verifies the written partition. img-boot's spec Requires
+- **On-device kernel updates** (option P, decision D21; single pass since 2026-10-18,
+  tested R11): the %post of img-boot, `-vendor_boot`, `-kernel-dtbo` and `-vendor_dlkm`
+  registers flash-bootimg.sh, flash-vendor_boot.sh, flash-dtbo.sh and flash-vendor_dlkm.sh;
+  each calls ks_flash_set, which checks the whole set (hybris-boot.img's release =
+  /boot/vendor_dlkm.release, CPUCHECK_STRING, slot a, the unsparsed vendor_dlkm fits
+  vendor_dlkm_a) and writes, in the one preinit pass, every partition that differs from
+  its image, each verified with ks_part_matches. img-boot's spec Requires
   `droid-hal-pdx246-vendor_dlkm` with the same version-release as `-vendor_boot` and
-  `-kernel-dtbo`; its %post registers flash-bootimg.sh. img-boot's Release changes
-  per build since 2026-10-17 (B6).
+  `-kernel-dtbo`. img-boot's Release changes per build since 2026-10-17 (B6). The device
+  tree fixes vendor_dlkm at 96 MiB (BOARD_VENDOR_DLKMIMAGE_PARTITION_SIZE), so
+  vendor_dlkm_a never needs resizing between builds.
 - **USB in the running OS** (decision D12): usb-moded-configfs-setup.sh waits for
   /sys/class/udc/a600000.dwc3 (up to 30 s, at most 3 s after the charger's `usb` power supply
   appears) and, if it is absent and the glue is not in host mode, writes `peripheral` to
