@@ -88,7 +88,9 @@ Recommends: waydroid-runner
 Device glue for Waydroid on the Sony Xperia 10 VI: the container's view of
 /vendor without the vendor's copies of the libraries the Android 13 image
 ships itself, the container's binder nodes in /dev, and a check that keeps
-the container off the phone's own binder.
+the container off the phone's own binder. Also masks lxc@multi-user.service,
+which the lxc package's enabled template unit would start (and fail) at
+every boot.
 
 %files waydroid
 %defattr(-,root,root,-)
@@ -99,10 +101,15 @@ the container off the phone's own binder.
 %dir /usr/lib/systemd/system/waydroid-container.service.d
 /usr/lib/systemd/system/waydroid-container.service.d/50-pdx246.conf
 /usr/lib/tmpfiles.d/pdx246-waydroid.conf
+# lxc's install enables the template lxc@.service without an instance, so
+# systemd starts lxc@multi-user.service at every boot and it fails (no such
+# container). A link to /dev/null masks that one instance.
+/usr/lib/systemd/system/lxc@multi-user.service
 
 %post waydroid
 systemd-tmpfiles --create /usr/lib/tmpfiles.d/pdx246-waydroid.conf || :
 systemctl daemon-reload || :
+systemctl reset-failed lxc@multi-user.service >/dev/null 2>&1 || :
 # Waydroid starts its own dnsmasq on its bridge; the system-wide service would
 # hold the address first (dnsmasq: failed to create listening socket).
 systemctl mask --now dnsmasq.service >/dev/null 2>&1 || :
