@@ -1,0 +1,21 @@
+# SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# The Waydroid container's view of /vendor (see /usr/libexec/pdx246-waydroid/vendor-view).
+# Mounted at every boot, not only for the container (drop-in 50-pdx246.conf): waydroid
+# init and waydroid upgrade write the container's mount list and bind the view only if
+# it is mounted at that moment, /vendor otherwise. The mounts below /vendor are
+# droid-hal mount units in local-fs.target.
+[Unit]
+Description=Waydroid vendor view for pdx246
+After=local-fs.target
+ConditionPathIsDirectory=/vendor/lib64
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/libexec/pdx246-waydroid/vendor-view start
+ExecStop=/usr/libexec/pdx246-waydroid/vendor-view stop
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,93 @@
+#!/bin/sh
+# SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Waydroid on pdx246: the container's view of /vendor.
+#
+# In Halium mode the Waydroid container sees the host's /vendor as /vendor_extra
+# and loads the phone's GPU and gralloc libraries from there. pdx246's vendor
+# partition is Android 16, which no longer uses a VNDK: it ships its own copies
+# of former VNDK libraries (libbinder, libhidlbase, libbase, libui, ...). The
+# Waydroid image is Android 13 and has these libraries itself (VNDK v33); when
+# the container's linker finds the vendor's copies first, Waydroid's own HALs
+# fail to link ("libapexsupport.so not found", IBinder::isHostHwBinder missing)
+# and Android never boots.
+#
+# So the container gets an overlay of /vendor in which the vendor's copies of
+# the image's VNDK libraries are hidden (whiteouts), except for the names in
+# keep.list: the Qualcomm display mapper libraries need the vendor's newer
+# libc++ (std::__1::__libcpp_verbose_abort). The mounts below /vendor
+# (firmware, dsp) are bound into the view. The port's waydroid package
+# (hybris/mw/waydroid, patch 0006) binds /var/lib/waydroid/vendor_extra
+# instead of /vendor when it is mounted.
+#
+# The names come from vndk-v33-lib.list and vndk-v33-lib64.list (the VNDK of
+# the official Android 13 Waydroid images), intersected with what /vendor
+# holds now. The whiteouts live in /run and are rebuilt at every start.
+#
+# usage: vendor-view start|stop
+
+set -u
+VIEW=/var/lib/waydroid/vendor_extra
+HIDE=/run/pdx246-waydroid/vendor-hide
+SHARE=/usr/share/pdx246-waydroid
+
+log() {
+    echo "pdx246-waydroid: $*"
+}
+
+# The real path of the view (/var/lib/waydroid is a link to /home/waydroid).
+view_path() {
+    readlink -f "$VIEW"
+}
+
+is_mounted() {
+    grep -q " $1 " /proc/mounts
+}
+
+names() {
+    grep -v -e '^#' -e '^$' "$1"
+}
+
+start() {
+    mkdir -p "$VIEW" || return 1
+    v=$(view_path)
+    if is_mounted "$v"; then
+        log "vendor view already mounted at $v"
+        return 0
+    fi
+    [ -d /vendor/lib64 ] || { log "/vendor is not mounted"; return 1; }
+
+    mkdir -p "$HIDE/lib" "$HIDE/lib64" || return 1
+    n=0
+    for d in lib lib64; do
+        for name in $(names "$SHARE/vndk-v33-$d.list"); do
+            names "$SHARE/keep.list" | grep -qx "$name" && continue
+            [ -e "/vendor/$d/$name" ] || continue
+            [ -c "$HIDE/$d/$name" ] || mknod "$HIDE/$d/$name" c 0 0 || return 1
+            n=$((n + 1))
+        done
+    done
+
+    mount -t overlay overlay -o "ro,lowerdir=$HIDE:/vendor" "$v" || return 1
+    # An overlay does not include the mounts below its lower directory.
+    for m in $(awk '$2 ~ "^/vendor/" {print $2}' /proc/mounts); do
+        mount --bind "$m" "$v${m#/vendor}" || log "could not bind $m into the view"
+    done
+    log "vendor view mounted at $v: $n libraries hidden"
+}
+
+stop() {
+    v=$(view_path)
+    is_mounted "$v" || return 0
+    for m in $(awk -v v="$v/" 'index($2, v) == 1 {print $2}' /proc/mounts | sort -r); do
+        umount "$m"
+    done
+    umount "$v"
+}
+
+case "${1:-}" in
+start) start ;;
+stop) stop ;;
+*) echo "usage: $0 start|stop" >&2; exit 2 ;;
+esac

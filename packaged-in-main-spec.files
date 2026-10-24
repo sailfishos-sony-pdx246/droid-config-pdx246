@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Files of sparse/ that rpm/droid-config-pdx246.spec packages in its own
+# subpackages, so droid-configs.inc leaves them out of droid-config-pdx246.
+# One extended regular expression per line (grep -vE).
+#
+# droid-config-pdx246-waydroid
+/usr/libexec/pdx246-waydroid/
+/usr/share/pdx246-waydroid/
+/usr/lib/systemd/system/pdx246-waydroid-vendor-view\.service
+/usr/lib/systemd/system/multi-user\.target\.wants/pdx246-waydroid-vendor-view\.service
+/usr/lib/systemd/system/waydroid-container\.service\.d/
+/usr/lib/tmpfiles\.d/pdx246-waydroid\.conf

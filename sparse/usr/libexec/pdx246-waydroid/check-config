@@ -1,0 +1,45 @@
+#!/bin/sh
+# SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Waydroid on pdx246: refuse to start the container on a configuration that
+# would hurt the phone (ExecStartPre of waydroid-container.service).
+#
+# On this libhybris host /dev/binder, /dev/vndbinder and /dev/hwbinder belong to
+# the phone's own Android HALs (oFono, sensors, NFC, Bluetooth, audio). A
+# container on them would share their binder context. Waydroid must use the
+# dedicated nodes (puddlejumper, vndpuddlejumper, hwpuddlejumper; kernel
+# CONFIG_ANDROID_BINDER_DEVICES, linked into /dev by tmpfiles) and a HALIUM
+# vendor type. waydroid init writes both; older versions wrote MAINLINE and the
+# host's nodes.
+
+CFG=/var/lib/waydroid/waydroid.cfg
+
+fail() {
+    echo "pdx246-waydroid: $*; not starting the Waydroid container" >&2
+    exit 1
+}
+
+for n in puddlejumper vndpuddlejumper hwpuddlejumper; do
+    [ -c "/dev/$n" ] || fail "/dev/$n is missing"
+done
+
+# Not initialized yet: waydroid itself refuses to start a session.
+[ -f "$CFG" ] || exit 0
+
+get() {
+    sed -n "s/^$1 = //p" "$CFG" | head -n 1
+}
+
+case "$(get vendor_type)" in
+HALIUM_*) ;;
+*) fail "$CFG has vendor_type '$(get vendor_type)'; this phone needs a HALIUM type (run waydroid init -f again)" ;;
+esac
+
+for key in binder vndbinder hwbinder; do
+    case "$(get $key)" in
+    binder|vndbinder|hwbinder|"") fail "$CFG has $key = '$(get $key)', the phone's own node" ;;
+    esac
+done
+
+exit 0

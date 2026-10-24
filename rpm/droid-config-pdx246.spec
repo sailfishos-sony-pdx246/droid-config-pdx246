@@ -69,3 +69,55 @@ Requires: libgbinder-tools
 # IMPORTANT if you want to comment out any macros in your .spec, delete the
 # percent sign, otherwise they will remain defined! E.g.:
 #define some_macro "I'll not be defined because I don't have a percent sign in front"
+
+# Waydroid (Android apps in an LXC container): the device glue. Waydroid itself
+# is the port's own package (hybris/mw/waydroid: 1.6.3 with patches). The files
+# are in sparse/ and listed in packaged-in-main-spec.files, so the main package
+# leaves them out. Why the container needs its own view of /vendor: see
+# sparse/usr/libexec/pdx246-waydroid/vendor-view.
+%package waydroid
+Summary: Waydroid integration for the Sony Xperia 10 VI
+Requires: waydroid >= 1.6.3
+# Only the port's waydroid binds the vendor view (its patch 0006); a waydroid
+# from another repository must not replace it.
+Requires: waydroid(vendor-view)
+Requires: waydroid-gbinder-config-hybris
+Recommends: waydroid-runner
+
+%description waydroid
+Device glue for Waydroid on the Sony Xperia 10 VI: the container's view of
+/vendor without the vendor's copies of the libraries the Android 13 image
+ships itself, the container's binder nodes in /dev, and a check that keeps
+the container off the phone's own binder.
+
+%files waydroid
+%defattr(-,root,root,-)
+/usr/libexec/pdx246-waydroid
+/usr/share/pdx246-waydroid
+/usr/lib/systemd/system/pdx246-waydroid-vendor-view.service
+/usr/lib/systemd/system/multi-user.target.wants/pdx246-waydroid-vendor-view.service
+%dir /usr/lib/systemd/system/waydroid-container.service.d
+/usr/lib/systemd/system/waydroid-container.service.d/50-pdx246.conf
+/usr/lib/tmpfiles.d/pdx246-waydroid.conf
+
+%post waydroid
+systemd-tmpfiles --create /usr/lib/tmpfiles.d/pdx246-waydroid.conf || :
+systemctl daemon-reload || :
+# Waydroid starts its own dnsmasq on its bridge; the system-wide service would
+# hold the address first (dnsmasq: failed to create listening socket).
+systemctl mask --now dnsmasq.service >/dev/null 2>&1 || :
+# Mount the vendor view now, not only at the next boot: a waydroid init run
+# before that would write /vendor into the container's mount list.
+systemctl start pdx246-waydroid-vendor-view.service >/dev/null 2>&1 || :
+
+%preun waydroid
+if [ $1 -eq 0 ] ; then
+  # Also stops waydroid-container.service (it requires the view).
+  systemctl stop pdx246-waydroid-vendor-view.service >/dev/null 2>&1 || :
+fi
+
+%postun waydroid
+if [ $1 -eq 0 ] ; then
+  systemctl unmask dnsmasq.service >/dev/null 2>&1 || :
+  systemctl daemon-reload || :
+fi

@@ -1,0 +1,7 @@
+# SPDX-FileCopyrightText: Johannes Meyer zum Alten Borgloh
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Names vendor-view never hides: the Qualcomm display mapper libraries
+# (vendor.qti.hardware.display.mapper*, needed by eglSubDriverAndroid.so) use
+# std::__1::__libcpp_verbose_abort, which only the vendor's Android 16 libc++ has.
+libc++.so
