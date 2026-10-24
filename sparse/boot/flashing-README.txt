@@ -57,12 +57,14 @@ data, apps and files) and replaces the boot chain of slot a.
 
      ./flash.sh --fastboot /path/to/platform-tools/fastboot
 
-   The script checks the phone model and the md5 sums, makes slot a active
-   and reboots into the userspace fastboot (fastbootd) of the LineageOS
-   recovery. There ./flash-preflight.sh checks that fastbootd runs from slot
-   a, that no Virtual A/B merge is pending and that vendor_dlkm_a exists, and
-   stops with an explanation if not; no partition has been written at that
-   point.
+   The script checks the phone model and the md5 sums and makes slot a
+   active. Then ./flash-preflight.sh reboots the phone into the userspace
+   fastboot (fastbootd) of the LineageOS recovery and waits for it: a
+   "FAILED (usb_read failed: No such device)" from that reboot only means
+   that the reply got lost, which is common and harmless. It checks that
+   fastbootd runs from slot a, that no Virtual A/B merge is pending and that
+   vendor_dlkm_a exists, and stops with an explanation if not; no partition
+   has been written at that point.
    Then the script writes vendor_dlkm_a and userdata from fastbootd, returns
    to the bootloader, writes boot_a, vendor_boot_a and dtbo_a, and makes
    slot a active.
@@ -82,15 +84,16 @@ until "fastboot devices" lists the phone, run
 
 and start ./flash.sh again from the beginning. A half-written userdata or
 vendor_dlkm_a is rewritten by the new run. If the run had already written
-boot_a and "fastboot reboot fastboot" now fails, continue as in the next
-section.
+boot_a, the new run cannot reach fastbootd (Sailfish OS starts instead);
+continue as in the next section.
 
 
 = RE-FLASHING OVER AN INSTALLED SAILFISH OS =
 
 fastbootd cannot be reached while boot_a holds Sailfish OS: "fastboot reboot
-fastboot" then simply boots Sailfish OS again (tested 2026-10-08), and flash.sh
-waits for fastbootd forever (stop it with Ctrl-C; nothing has been written).
+fastboot" then simply boots Sailfish OS again (tested 2026-10-08), and
+flash-preflight.sh stops flash.sh after 90 seconds (nothing has been written;
+on a computer without the "timeout" command it waits until you press Ctrl-C).
 So before running ./flash.sh over an installed Sailfish OS, enter the
 bootloader (power off, hold volume up while plugging in USB) and flash the
 saved LineageOS images of the release on slot a:
@@ -102,12 +105,6 @@ saved LineageOS images of the release on slot a:
 Do not let the phone boot normally with these, then run ./flash.sh. It writes
 the Sailfish OS boot_a, vendor_boot_a and dtbo_a again at the end.
 
-If flash.sh stops right after "reboot fastboot" with "FAILED (usb_read failed:
-No such device)", the phone usually reached fastbootd anyway (the reboot raced
-the reply): check with "fastboot getvar is-userspace" and either run
-"fastboot reboot bootloader" and ./flash.sh again, or continue by hand from
-fastbootd as in the next section.
-
 
 = FLASHING BY HAND =
 
@@ -115,6 +112,10 @@ From the bootloader (fastboot mode):
 
   fastboot --set-active=a
   fastboot reboot fastboot
+
+If the reboot reports "FAILED (usb_read failed: No such device)", the reply
+got lost; the phone usually reaches fastbootd anyway ("fastboot getvar
+is-userspace" answers "yes" there).
 
 In fastbootd, check first; do not continue unless the answers are exactly
 these (or run ./flash-preflight.sh, which does the same checks):

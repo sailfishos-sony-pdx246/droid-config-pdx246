@@ -112,8 +112,10 @@ Checked out at `$ANDROID_ROOT/hybris/droid-configs`:
   the home screen, then left running for a minute, so that the Virtual A/B merge
   completes.
 - Fastbootd first. From the Sony bootloader: the `getvar secure` dry run,
-  `fastboot --set-active=a`, `fastboot reboot fastboot`; then
-  `./flash-preflight.sh` stops the run unless fastbootd reports current-slot a,
+  `fastboot --set-active=a`; then `./flash-preflight.sh --reboot-fastboot`
+  reboots into fastbootd and waits for it (fastboot itself fails when the
+  bootloader's reply to the reboot gets lost, although the phone reboots), and
+  stops the run unless fastbootd reports current-slot a,
   snapshot-update-status none and is-logical:vendor_dlkm_a yes. From fastbootd:
   `vendor_dlkm_a` and `userdata` (sailfish.img001); `fastboot reboot bootloader`;
   from the bootloader: `boot_a` (hybris-boot.img), `vendor_boot_a`, `dtbo_a`;

@@ -3,9 +3,17 @@
 # SPDX-License-Identifier: GPL-2.0-only
 #
 # Pre-flight check for flashing Sailfish OS on the Sony Xperia 10 VI (pdx246).
-# flash.sh runs it (flash-config.sh: "run ./flash-preflight.sh") after
-# "fastboot --set-active=a" and "fastboot reboot fastboot", before anything is
-# written. It can also be run by hand with the phone in fastbootd.
+# flash.sh runs it (flash-config.sh: "run ./flash-preflight.sh --reboot-fastboot")
+# after "fastboot --set-active=a", before anything is written. It can also be
+# run by hand with the phone in fastbootd (without the option).
+#
+# --reboot-fastboot: first reboot from the bootloader into fastbootd and wait
+# for it. The bootloader often resets USB before fastboot has read its reply
+# ("FAILED (usb_read failed: No such device)", frequent through a VM's USB
+# passthrough); fastboot then gives up although the phone reboots into
+# fastbootd, so that error alone does not stop the flash. If the phone does
+# not come back in fastboot mode within 90 seconds (boot_a holds Sailfish OS,
+# which then simply starts), the check fails.
 #
 # It exits 1, and so stops flash.sh, unless fastbootd reports:
 #   is-userspace              yes   the phone is in fastbootd, not the bootloader
@@ -61,10 +69,50 @@ if [ -z "$ANDROID_SERIAL" ]; then
     fi
 fi
 
+# fastboot waits for a missing device indefinitely; give up after $1 seconds
+# where timeout(1) exists (not on stock macOS). --foreground lets Ctrl-C reach
+# fastboot.
+if timeout --foreground 1 true 2>/dev/null; then
+    TIMEOUT="timeout --foreground"
+elif command -v timeout >/dev/null 2>&1; then
+    TIMEOUT=timeout
+else
+    TIMEOUT=
+fi
+
+fb_timeout() {
+    t=$1
+    shift
+    if [ -n "$TIMEOUT" ]; then
+        $TIMEOUT "$t" "$FB" "$@"
+    else
+        "$FB" "$@"
+    fi
+}
+
 # Value of a fastboot variable ("<name>: <value>" on stderr), empty on failure.
 getvar() {
-    "$FB" getvar "$1" 2>&1 | sed -n "s/^$1: *//p" | head -n 1 | tr -d '\r'
+    fb_timeout 10 getvar "$1" 2>&1 | sed -n "s/^$1: *//p" | head -n 1 | tr -d '\r'
 }
+
+if [ "$1" = "--reboot-fastboot" ]; then
+    echo ">> $FB reboot fastboot"
+    fb_timeout 90 reboot fastboot
+    rc=$?
+    if [ $rc -eq 124 ]; then
+        fail "the phone did not come back in fastboot mode within 90 seconds." \
+             "If Sailfish OS started instead, boot_a holds Sailfish OS: flash the" \
+             "saved LineageOS boot_a, vendor_boot_a and dtbo_a from the bootloader" \
+             "first (flashing-README.txt, RE-FLASHING OVER AN INSTALLED SAILFISH OS)."
+    elif [ $rc -ne 0 ]; then
+        echo "Waiting up to 60 seconds for fastbootd (a lost reply to the reboot is"
+        echo "harmless)..."
+        end=$(($(date +%s) + 60))
+        until [ "$(getvar is-userspace)" = "yes" ] || [ "$(date +%s)" -ge $end ]; do
+            sleep 1
+        done
+    fi
+fi
 
 v=$(getvar is-userspace)
 echo "<< is-userspace: $v"

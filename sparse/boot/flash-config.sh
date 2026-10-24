@@ -14,13 +14,15 @@
 # logical partitions.
 #
 # Order (fastbootd first):
-#  1. From the bootloader: make slot a active and reboot into fastbootd.
+#  1. From the bootloader: make slot a active; flash-preflight.sh reboots into
+#     fastbootd and waits for it (fastboot alone stops flash.sh when the
+#     bootloader's reply to the reboot gets lost, although the phone reboots).
 #     fastbootd lives in recovery_a, which has no kernel of its own: it boots
 #     with boot_a's kernel and vendor_boot_a's modules. On the first install
 #     these are still LineageOS's, which is known to work, so fastbootd runs
 #     before boot_a and vendor_boot_a change.
-#  2. flash-preflight.sh checks in fastbootd that the current slot is a, that
-#     no Virtual A/B merge is pending, and that vendor_dlkm_a is a logical
+#  2. flash-preflight.sh then checks in fastbootd that the current slot is a,
+#     that no Virtual A/B merge is pending, and that vendor_dlkm_a is a logical
 #     partition of slot a. No partition is written before that check passes.
 #  3. From fastbootd: vendor_dlkm_a (logical, so fastbootd only) and userdata
 #     (fastbootd reports a usable max-download-size, so the sparse image is
@@ -37,8 +39,14 @@
 #
 # Re-flashing over an installed Sailfish OS: "fastboot reboot fastboot" does not
 # reach fastbootd while boot_a holds Sailfish OS (it boots Sailfish OS again,
-# tested 2026-10-08). Flash the saved LineageOS boot_a, vendor_boot_a and dtbo_a
-# from the bootloader first, then run ./flash.sh (flashing-README.txt).
+# tested 2026-10-08; flash-preflight.sh then stops after 90 seconds). Flash the
+# saved LineageOS boot_a, vendor_boot_a and dtbo_a from the bootloader first,
+# then run ./flash.sh (flashing-README.txt).
+
+# flash.sh sources this file after reading --fastboot, but exports the value
+# only when it re-runs itself through sudo; flash-preflight.sh needs it also
+# when flash.sh already runs as root.
+export FASTBOOT_BIN_NAME
 
 VALID_PRODUCTS=(
 "pdx246"
@@ -49,8 +57,7 @@ VALID_PRODUCTS=(
 FLASH_OPS=(
 "getvar_fail_if secure yes"
 "run fastboot --set-active=a"
-"run fastboot reboot fastboot"
-"run ./flash-preflight.sh"
+"run ./flash-preflight.sh --reboot-fastboot"
 "flash_dont_fail vendor_dlkm_a vendor_dlkm.img"
 "flash userdata sailfish.img001"
 "run fastboot reboot bootloader"

@@ -150,8 +150,10 @@ packages, and `mapplauncherd-booster-silica-qt5-media` (8 GB RAM) enabled.
 - Operations, in this order (FASTBOOTD FIRST, the procedure all four adaptation
   repos document):
   1. `getvar_fail_if secure yes` (dry run only, as dcd flash.sh does);
-  2. `run fastboot --set-active=a`; `run fastboot reboot fastboot`;
-  3. `run ./flash-preflight.sh`;
+  2. `run fastboot --set-active=a`;
+  3. `run ./flash-preflight.sh --reboot-fastboot` (reboots into fastbootd, waits,
+     checks; before 2026-10-24 two ops, `run fastboot reboot fastboot` and
+     `run ./flash-preflight.sh`);
   4. from fastbootd `flash_dont_fail vendor_dlkm_a vendor_dlkm.img`,
      `flash userdata sailfish.img001`;
   5. `run fastboot reboot bootloader`; from the bootloader `boot_a` (hybris-boot.img),
@@ -194,9 +196,24 @@ packages, and `mapplauncherd-booster-silica-qt5-media` (8 GB RAM) enabled.
   the phone boots Sailfish OS again and flash.sh waits forever (nothing written). The
   saved LineageOS boot_a, vendor_boot_a and dtbo_a must be flashed from the bootloader
   first; then LineageOS fastbootd comes up and flash.sh (or the by-hand sequence) works.
-  flashing-README.txt and flash-config.sh say so. Also seen: `reboot fastboot` can race
-  ("FAILED (usb_read failed: No such device)"), flash.sh exits, but the phone is in
-  fastbootd; continue by hand (flash-preflight.sh, then the remaining FLASH_OPS).
+  flashing-README.txt and flash-config.sh say so.
+- The reboot into fastbootd races (2026-10-24, both flash.sh runs of release 2's test
+  from the KVM guest): the bootloader resets USB before fastboot reads its reply,
+  `RebootTo` fails ("FAILED (usb_read failed: No such device)", fastboot's Epilog dies
+  with "Command failed", system/core/fastboot/fastboot.cpp reboot_to_userspace_fastboot),
+  print_and_run exits flash.sh, but the phone is in fastbootd. Without the race,
+  fastboot itself waits for the device (open_device, no timeout) and checks
+  is-userspace; when boot_a holds Sailfish OS it waits forever. So
+  `flash-preflight.sh --reboot-fastboot` runs the reboot under `timeout 90` (where
+  timeout(1) exists; `--foreground` so Ctrl-C reaches fastboot): exit 124 = the phone
+  never came back in fastboot mode (fail, re-flash hint); any other failure = poll
+  `getvar is-userspace` (each under `timeout 10`) for up to 60 s; then the usual
+  checks. Simulated with a fake fastboot (race, clean, never, back in the bootloader,
+  no timeout(1)) and through the real flash.sh.
+- flash.sh sources flash-config.sh after parsing `--fastboot` but exports
+  FASTBOOT_BIN_NAME only in its sudo re-exec; run as root (`sudo ./flash.sh --fastboot
+  /path`), the preflight fell back to `fastboot` from PATH and failed before writing
+  anything. flash-config.sh now does `export FASTBOOT_BIN_NAME`.
 - Interrupted run (USB drop while sending a large sparse image, TRAP 2 in
   PORTING-NOTES.md:7438-7448): reconnect until `fastboot devices` lists the phone,
   `fastboot reboot bootloader`, start ./flash.sh again; the rerun rewrites a
