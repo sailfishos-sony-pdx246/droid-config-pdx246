@@ -58,6 +58,9 @@ start() {
     fi
     [ -d /vendor/lib64 ] || { log "/vendor is not mounted"; return 1; }
 
+    # Start from an empty whiteout tree: after a restart with changed lists, a
+    # name that is no longer listed must be visible again.
+    rm -rf "$HIDE"
     mkdir -p "$HIDE/lib" "$HIDE/lib64" || return 1
     n=0
     for d in lib lib64; do

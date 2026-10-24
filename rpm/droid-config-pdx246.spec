@@ -114,8 +114,16 @@ systemctl reset-failed lxc@multi-user.service >/dev/null 2>&1 || :
 # hold the address first (dnsmasq: failed to create listening socket).
 systemctl mask --now dnsmasq.service >/dev/null 2>&1 || :
 # Mount the vendor view now, not only at the next boot: a waydroid init run
-# before that would write /vendor into the container's mount list.
-systemctl start pdx246-waydroid-vendor-view.service >/dev/null 2>&1 || :
+# before that would write /vendor into the container's mount list. On an
+# update, mount it again so that changed lists (keep.list, the VNDK lists)
+# apply, but only while Android is not running: waydroid-container.service
+# requires the view, so restarting the view restarts the container service
+# and would stop Android.
+if [ "$(lxc-info -P /var/lib/waydroid/lxc -n waydroid -s 2>/dev/null | awk '{print $2}')" = RUNNING ]; then
+  systemctl start pdx246-waydroid-vendor-view.service >/dev/null 2>&1 || :
+else
+  systemctl restart pdx246-waydroid-vendor-view.service >/dev/null 2>&1 || :
+fi
 
 %preun waydroid
 if [ $1 -eq 0 ] ; then
