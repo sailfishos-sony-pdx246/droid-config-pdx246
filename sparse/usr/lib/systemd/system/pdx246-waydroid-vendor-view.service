@@ -5,10 +5,13 @@
 # Mounted at every boot, not only for the container (drop-in 50-pdx246.conf): waydroid
 # init and waydroid upgrade write the container's mount list and bind the view only if
 # it is mounted at that moment, /vendor otherwise. The mounts below /vendor are
-# droid-hal mount units in local-fs.target.
+# droid-hal mount units in local-fs.target. The view itself lives on /home
+# (/var/lib/waydroid links to /home/waydroid), which is not in local-fs.target
+# when it is encrypted: it is mounted only after the security code.
 [Unit]
 Description=Waydroid vendor view for pdx246
 After=local-fs.target
+RequiresMountsFor=/home/waydroid
 ConditionPathIsDirectory=/vendor/lib64
 
 [Service]

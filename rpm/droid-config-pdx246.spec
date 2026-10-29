@@ -108,6 +108,10 @@ every boot.
 
 %post waydroid
 systemd-tmpfiles --create /usr/lib/tmpfiles.d/pdx246-waydroid.conf || :
+# Pre-installed Waydroid images live on /home (the root filesystem is small).
+# Not in tmpfiles.d: at boot an encrypted /home is still locked when tmpfiles
+# runs, so the directories would land on the root filesystem below it.
+mkdir -p /home/waydroid-extra/images || :
 systemctl daemon-reload || :
 systemctl reset-failed lxc@multi-user.service >/dev/null 2>&1 || :
 # Waydroid starts its own dnsmasq on its bridge; the system-wide service would
