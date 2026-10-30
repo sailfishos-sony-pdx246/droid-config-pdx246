@@ -130,8 +130,15 @@ Requires: sailfish-fpd
 Obsoletes: jolla-devicelock-daemon-encsfa
 Obsoletes: jolla-devicelock-plugin-encsfa
 
-# Enable home encryption
-#Requires: sailfish-device-encryption
+# Enable home encryption (tested from Settings on pdx246 2026-10-29): in an
+# image the package's %pre leaves a marker, and the first start encrypts /home
+# (LUKS); every boot then asks for the security code on Jolla's unlock screen.
+# It relies on the device lock above (sailfish-devicelock-fpd keeps the LUKS
+# passphrase equal to the security code), on /etc/mce/60-compositor-pdx246.ini
+# (the unlock screen needs Android's composer stopped), on the Waydroid units
+# waiting for /home (mounted only after the code) and on module-droid-card's
+# unload_call_exit (the emergency-call PulseAudio stops after the unlock).
+Requires: sailfish-device-encryption
 
 # For GPS
 # Local build of mer-hybris/geoclue-providers-hybris 0.3.1 with an AIDL
