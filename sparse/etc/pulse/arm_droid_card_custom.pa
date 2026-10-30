@@ -14,4 +14,12 @@
 # (src/common/droid-config.c). pdx246's vendor keeps it per SKU, in
 # /vendor/etc/audio/sku_parrot/ (its xi:include paths are absolute); without
 # this the card did not load ("Failed to parse any configuration", fifth boot).
-load-module module-droid-card rate=48000 hw_volume=false config=/vendor/etc/audio/sku_parrot/audio_policy_configuration.xml
+#
+# unload_call_exit=true: at stop, exit(0) when the hw module is released instead
+# of closing it. Unloading module-droid-card unmaps libhybris-common, and the
+# static destructors of Android libraries that exit() runs afterwards
+# (libmediautils' TimerThread) still call its pthread hooks: PulseAudio
+# segfaulted at every stop (2026-10-30). Takes effect with the hw module
+# reference fix in pulseaudio-modules-droid (branch pdx246-14.2.106); without
+# it the module was never released and PulseAudio aborted in core_free().
+load-module module-droid-card rate=48000 hw_volume=false config=/vendor/etc/audio/sku_parrot/audio_policy_configuration.xml unload_call_exit=true
