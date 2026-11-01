@@ -71,23 +71,25 @@ Checked out at `$ANDROID_ROOT/hybris/droid-configs`:
    ```sh
    rpm/dhd/helpers/build_packages.sh -d      # droid-hal-pdx246
    rpm/dhd/helpers/build_packages.sh -c      # this repository
-   git clone --recurse-submodules https://github.com/mer-hybris/pulseaudio-modules-droid.git hybris/mw/pulseaudio-modules-droid
-   git -C hybris/mw/pulseaudio-modules-droid checkout 65edd31f62f22e2eec1f765608ca9c6ae5c4af7b   # 14.2.106
+   git clone https://github.com/sailfishos-sony-pdx246/pulseaudio-modules-droid.git hybris/mw/pulseaudio-modules-droid
+   git -C hybris/mw/pulseaudio-modules-droid checkout pdx246-14.2.110
    rpm/dhd/helpers/build_packages.sh -o --mw # default middleware set, offline
    rpm/dhd/helpers/build_packages.sh --mw=https://github.com/sailfish-on-nabu/parse-android-dynparts
-   rpm/dhd/helpers/build_packages.sh --mw=https://github.com/sailfishos/sensorfw --spec=rpm/sensorfw-qt5-binder.spec
    rpm/dhd/helpers/build_packages.sh -g      # droidmedia, gst-droid
    rpm/dhd/helpers/build_packages.sh -o -N --mw=droid-hal-img-boot-pdx246
    rpm/dhd/helpers/build_packages.sh -v      # droid-hal-version-pdx246
    rpm/dhd/helpers/build_packages.sh -i      # the image
    ```
 
-   - pulseaudio-modules-droid stays at 14.2.106 (commit 65edd31f), the version
-     recommended for Sailfish OS 5.1; newer releases need matching changes in other
-     packages. It is cloned and checked out before the middleware run, and `--mw`
+   - pulseaudio-modules-droid is the port's fork, branch pdx246-14.2.110:
+     14.2.110, the version in Sailfish OS 5.2.0.22, plus a fix for the hw module
+     reference that output streams failing to open leaked (PulseAudio aborted at
+     every stop). It is cloned and checked out before the middleware run, and `--mw`
      runs with `-o`: without `-o`, buildmw runs `git pull` in every middleware
-     repository that already exists, which fails on the detached checkout or moves
-     it to a newer release. Missing repositories are still cloned.
+     repository that already exists, which would move it off the pinned release.
+     Missing repositories are still cloned.
+   - sensorfw's binder backend (AIDL sensors) comes from Jolla's adaptation-common
+     repository (0.15.2 since Sailfish OS 5.2); 5.1 needed a build from source.
    - `-g` packages droidmedia and gst-droid (droidmedia-localbuild from
      `external/droidmedia`); the adaptation pattern requires gstreamer1.0-droid.
      It needs droidmedia from the host build, which is only built with

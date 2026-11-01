@@ -404,6 +404,21 @@ virtual_stream=true restored (REUSE.toml: PulseAudio developers, Jolla, user; LG
 Drop it when moving to pulseaudio-modules-droid >= 14.2.107 (and upgrade nemo at the same time:
 nemo >= 14.2.33 ignores virtual_stream). Expect calls to start quieter (phone role -15 dB).
 Confirmed on the seventh boot: the volume keys work in calls and the speakerphone echo is gone.
+Dropped for Sailfish OS 5.2.0.22 (2026-11-01): 5.2.0.22 has pulseaudio-modules-nemo 14.2.33
+(mainvolume's virtual stream removed) and, on Jolla's devices, pulseaudio-modules-droid 14.2.110,
+whose droid card creates the voice volume stream itself (`voice_virtual_stream`, default true).
+The port's fork moved to 14.2.110 (branch pdx246-14.2.110 = 14.2.110 + the hw module reference
+fix), so dcd's default_sailfish.pa applies again. 14.2.107+ also detects wired headsets itself
+(`/sys/class/switch/h2w`, else the first /dev/input device with SW_HEADPHONE_INSERT) and tells
+the HAL; USB audio stays off (`usb_devices` option not set).
+Late unlock keypad (2026-11-01, first reboot of the 5.2 image): the keypad waits for Jolla's
+system-wide emergency-call PulseAudio (emergency-call.target), which opens the HAL at ~13 s. Once
+of two boots, Qualcomm's AGM service crashed on that first stream (null pointer in libagm.so
+session_obj_get_from_pool), the HAL aborted with it, and PulseAudio hung until its 120 s start
+timeout plus the 15 s stop timeout: keypad at 142 s. Mitigation:
+`usr/lib/systemd/system/pulseaudio.service.d/50-pdx246-start-timeout.conf` (TimeoutStartSec=30,
+TimeoutStopSec=5; a normal start takes ~6 s). Details: the notes repo,
+analysis/sfos-5.2-update-2026-10-28/late-keypad-2026-11-01/.
 
 ### D11. disabled_services: sparse-16 file kept, device stubs in disabled_services_device.rc
 
@@ -694,8 +709,11 @@ AIDL ISensors v3 (multihal). sensorfw's binder backend tries
 upstream source); the adaptor names in dcd/sparse/etc/sensorfw/primaryuse.conf are
 unchanged. `sensord.conf.d/60-sensors-pdx246.conf` only turns off the pressure sensor
 (no barometer). The pattern requires `hybris-libsensorfw-qt5-binder >= 0.15.2`
-(0.15.1 in adaptation-common 5.1.0.11 per the sibling droid-hal-version NOTES), so it
-must be built with `--mw=https://github.com/sailfishos/sensorfw --spec=rpm/sensorfw-qt5-binder.spec`.
+(0.15.1 in adaptation-common 5.1.0.11 per the sibling droid-hal-version NOTES), so for 5.1 it
+had to be built with `--mw=https://github.com/sailfishos/sensorfw --spec=rpm/sensorfw-qt5-binder.spec`
+(master b889c3d = 0.15.2 plus two LuneOS-only commits). Sailfish OS 5.2.0.22 ships
+sensorfw-qt5 and hybris-libsensorfw-qt5-binder 0.15.2 (adaptation-common, built 2026-06-20),
+so the port takes Jolla's pair and no longer builds it.
 
 `sensorfwd.service.d/50-pdx246-wait-sensors-hal.conf` (third boot, 2026-10-06): sensorfw's
 binder backend gives up after 5 x 1 s without a HAL (hybrisbackend_binder.cpp:41-55) and
@@ -729,6 +747,11 @@ IDLE/IDLE. So the NXP HAL's core_initialized step (libnfc-nxp.conf, RF blocks) d
 under Sailfish; the controller keeps the configuration Android stored in its flash
 (CORE_RESET_NTF Configuration Status 0 = kept), which is enough for reader mode. The patch is
 harmless and stays as an upstream candidate. Card emulation is untested.
+
+Sailfish OS 5.2.0.22 (2026-11-01): adaptation-common ships nfcd-binder-plugin 1.2.1 (fixes the
+AIDL close call), which would replace the port's 1.2.0 build in the image, so the patch moved to
+branch pdx246-1.2.1 (9be7676 on 1.2.1). libncicore 1.2.0 is now in adaptation-common too; the
+port's 1.2.0+pdx246 still sorts higher and keeps the passive-only polling.
 
 ### D19. CSD, camera, ssu
 
@@ -1111,7 +1134,7 @@ switch, seat0 session stays active, mce_bluez_wait events stay at 0 overnight).
   audio.hidl_compat.default.so through the parrot link (no "not accessible for the
   namespace" in the journal); `getprop init.svc.vendor.audio-hal` = running; playback,
   recording, call audio. Check module-droid-card arguments against the
-  pulseaudio-modules-droid version (14.2.106 recommended for 5.1, IRCLOGS.md:30, 598).
+  pulseaudio-modules-droid version (the port's fork: 14.2.110 since Sailfish OS 5.2.0.22).
 - **R3 modules**: `getprop vendor.all.modules.ready` = 1; `lsmod | wc -l` about 351.
 - **R4 USB**: with a cable, `/sys/class/udc/a600000.dwc3` exists and developer mode
   (RNDIS, usb0) and MTP work. `journalctl -u usb-moded-configfs-setup` shows whether
@@ -1352,8 +1375,8 @@ CC-BY-SA-4.0; files from other owners keep their licence.
 | sparse/lib/udev/rules.d/99-pdx246-by-name.rules | new | header |
 | sparse/usr/libexec/droid-hybris/system/etc/init/odsign_hybris.rc | new | header |
 | sparse/usr/lib/systemd/user/pulseaudio.service.d/50-pdx246-qti-passthrough.conf | new | header |
+| sparse/usr/lib/systemd/system/pulseaudio.service.d/50-pdx246-start-timeout.conf | new (D10) | header |
 | delete_file_pdx246.list | new (device delete list read by droid-configs.inc) | header |
-| sparse/etc/pulse/default_sailfish.pa | copy of dcd's file, virtual_stream=true (D10) | REUSE.toml: PulseAudio developers, Jolla Ltd., user; LGPL-2.1-or-later |
 | sparse/usr/lib/systemd/system/pdx246-mark-slot.service | new (runs sparse-16's droid-bootctl.sh earlier) | header |
 | sparse/usr/lib/systemd/system/multi-user.target.wants/pdx246-mark-slot.service | new symlink | REUSE.toml |
 | sparse/usr/share/csd/settings.d/hw-settings.ini | derived from mer-hybris/droid-config-sony-murray@83c7d48:sparse/usr/share/csd/settings.d/10-hw-settings.ini (Jolla Ltd.) | header: Jolla Ltd. + user, GPL-2.0-only, "Based on" line (`;` comments) |

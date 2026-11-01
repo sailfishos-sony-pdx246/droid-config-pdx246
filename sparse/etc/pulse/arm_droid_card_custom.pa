@@ -20,6 +20,6 @@
 # static destructors of Android libraries that exit() runs afterwards
 # (libmediautils' TimerThread) still call its pthread hooks: PulseAudio
 # segfaulted at every stop (2026-10-30). Takes effect with the hw module
-# reference fix in pulseaudio-modules-droid (branch pdx246-14.2.106); without
+# reference fix in pulseaudio-modules-droid (branch pdx246-14.2.110); without
 # it the module was never released and PulseAudio aborted in core_free().
 load-module module-droid-card rate=48000 hw_volume=false config=/vendor/etc/audio/sku_parrot/audio_policy_configuration.xml unload_call_exit=true
