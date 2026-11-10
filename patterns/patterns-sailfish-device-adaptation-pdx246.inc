@@ -106,8 +106,9 @@ Requires: qtscenegraph-adaptation
 Requires: gstreamer1.0-droid
 Obsoletes: gmp-droid
 
-# This is needed for notification LEDs
-Requires: mce-plugin-libhybris
+# No mce-plugin-libhybris: the Xperia 10 VI has no notification LED (the
+# PMIC's red, green and blue LED nodes drive nothing), and built without
+# libhybris the plugin only holds mce's LED backends.
 
 # USB mode controller
 Requires: usb-moded
