@@ -7,7 +7,7 @@
 #
 # Generated with DEVICE=pdx246 from droid-configs-device/patterns/templates/
 # patterns-sailfish-device-configuration-@DEVICE@.inc (mer-hybris/droid-hal-configs
-# 1dae7f2), then edited for pdx246; NOTES.md lists every change with evidence.
+# 1dae7f2), then edited for pdx246.
 # This file is included by the spec: no percent sign in comments.
 
 %package -n patterns-sailfish-device-configuration-pdx246
@@ -24,8 +24,7 @@ Requires: patterns-sailfish-device-tools
 Requires: sailfish-content-graphics-z%{icon_res}
 
 # For multi-SIM devices: pdx246 runs dsds (persist.radio.multisim.config) with
-# IRadio on slot1 and slot2. Whether slot 2 is a physical SIM on every variant
-# is still open (NOTES.md TODO).
+# IRadio on slot1 and slot2 (on the XQ-ES54 a SIM card and the eSIM).
 Requires: jolla-settings-networking-multisim
 
 # Flashlight (flash LED: leds-qpnp-flash-v2)

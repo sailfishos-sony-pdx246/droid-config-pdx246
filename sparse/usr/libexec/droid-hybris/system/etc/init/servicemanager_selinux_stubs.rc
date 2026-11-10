@@ -4,7 +4,8 @@
 #
 # Android's three service managers with libselinux_stubs preloaded.
 #
-# The image runs with SELinux disabled (NOTES.md D9), so selinuxfs is not
+# The image runs with SELinux disabled (droid-hal-configs' default; Jolla's
+# compiled policy is not available as a package), so selinuxfs is not
 # mounted and Android's libselinux has no selinuxfs mount point:
 # selinux_status_open() fails, and Android 16's servicemanager and
 # vndservicemanager abort in their constructor

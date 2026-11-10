@@ -48,7 +48,7 @@ echo high-speed > "$G/max_speed" 2>/dev/null || :
 # "usb" power supply has appeared, and log what happened. In host mode (OTG
 # device attached) there is no UDC by design. (Until 2026-10-11 a fallback
 # forced the glue to peripheral here when the UDC stayed missing; it had not
-# fired in six boots, NOTES.md R4.)
+# fired in six boots.)
 UDC=/sys/class/udc/a600000.dwc3
 GLUE_MODE=/sys/bus/platform/devices/a600000.ssusb/mode
 PSY=/sys/class/power_supply/usb

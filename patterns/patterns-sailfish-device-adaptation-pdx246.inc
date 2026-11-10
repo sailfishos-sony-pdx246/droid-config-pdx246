@@ -7,7 +7,7 @@
 #
 # Generated with DEVICE=pdx246 from droid-configs-device/patterns/templates/
 # patterns-sailfish-device-adaptation-@DEVICE@.inc (mer-hybris/droid-hal-configs
-# 1dae7f2), then edited for pdx246; NOTES.md lists every change with evidence.
+# 1dae7f2), then edited for pdx246.
 # This file is included by the spec: no percent sign in comments.
 
 %package -n patterns-sailfish-device-adaptation-pdx246
@@ -63,9 +63,6 @@ Requires: bluebinder
 # Telephony: IRadio 1.6 on slot1 and slot2, used through radioInterface 1.5
 Requires: ofono-binder-plugin
 Requires: dummy_netd
-# IMS on pdx246 is AIDL only (vendor.qti.hardware.radio.ims v12). No ext-qti
-# plugin is known to support it yet; see NOTES.md TODO.
-#Requires: ofono-binder-plugin-ext-qti
 
 # Vibra
 Requires: ngfd-plugin-native-vibrator
@@ -79,7 +76,7 @@ Requires: qt5-plugin-generic-evdev
 # /usr/libexec/droid-hybris/system/lib64/hw/audio.primary.parrot.so ->
 # audio.hidl_compat.default.so (built in the Android tree from
 # vendor/halium/hardware, packaged by droid-hal-pdx246); that forwards to the
-# vendor's HIDL 7.0 audio service. See NOTES.md.
+# vendor's HIDL 7.0 audio service.
 Requires: pulseaudio-modules-droid
 Requires: pulseaudio-modules-droid-hidl
 
@@ -89,7 +86,7 @@ Requires: pulseaudio-modules-droid-hidl
 # BT_SCO=on; without it call audio stays on the phone. Local build of
 # rinigus' droid-bthelper 0.3.0 (hybris/mw/droid-bthelper, branch
 # pdx246-0.3.0, tag 0.3.0 = upstream 511bcd9); the 10 IV/10 V copy targets
-# audio 6.0. NOTES.md D26.
+# audio 6.0.
 Requires: droid-bthelper >= 0.3.0
 
 # The -dummy-af is needed for newer devices that run the main
@@ -144,14 +141,14 @@ Requires: sailfish-device-encryption
 # Local build of mer-hybris/geoclue-providers-hybris 0.3.1 with an AIDL
 # interface-version check (hybris/mw/geoclue-providers-hybris, branch
 # pdx246-0.3.1): pdx246's vendor serves AIDL IGnss V1, which lacks start and
-# setPositionMode, and 0.3.0 used it anyway (NOTES.md D25).
+# setPositionMode, and 0.3.0 used it anyway.
 Requires: geoclue-provider-hybris-binder >= 0.3.1
 
 # VoLTE and SMS over IMS: AIDL IMS client for oFono, local build of
 # rinigus/ofono-binder-plugin-ext-qti 0.1.1+aidl (hybris/mw, branch
 # pdx246-0.1.1-aidl). pdx246's vendor IMS radio interface is AIDL only
 # (vendor.qti.hardware.radio.ims.IImsRadio V12). It ships
-# /etc/ofono/binder.d/qti.conf (extPlugin = qti). NOTES.md D13.
+# /etc/ofono/binder.d/qti.conf (extPlugin = qti).
 Requires: ofono-binder-plugin-ext-qti >= 0.1.1
 
 # For FM radio on some QCOM devices
@@ -166,8 +163,9 @@ Requires: ofono-binder-plugin-ext-qti >= 0.1.1
 Requires: nfcd-binder-plugin
 # Local build of mer-hybris/libncicore 1.2.0 that polls only in passive modes
 # for reader/writer (hybris/mw/libncicore, branch pdx246-1.2.0): the SN220
-# rejects RF_DISCOVER_CMD with active-poll entries (no NFC-DEP). The
-# adaptation-common repo has 1.1.31. NOTES.md D18.
+# rejects RF_DISCOVER_CMD with active-poll entries (no NFC-DEP). Sailfish OS
+# 5.2's adaptation-common has 1.2.0 without that change; this build sorts
+# higher.
 Requires: libncicore >= 1.2.0
 #Requires: nfcd-pn54x-plugin
 

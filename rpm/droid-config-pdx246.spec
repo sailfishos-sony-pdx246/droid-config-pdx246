@@ -5,12 +5,12 @@
 # droid-config-pdx246: Sailfish OS device configuration for the Sony Xperia 10 VI
 # (pdx246; XQ-ES54 and XQ-ES72), Android 16 / LineageOS 23.2 base (hybris-23.2).
 # Checked out at $ANDROID_ROOT/hybris/droid-configs, with mer-hybris/droid-hal-configs
-# at droid-configs-device (SUBMODULES.md). Built from $ANDROID_ROOT with
+# at droid-configs-device. Built from $ANDROID_ROOT with
 #   rpm/dhd/helpers/build_packages.sh -c
 #
 # Started from droid-configs-device/droid-config-@DEVICE@.spec.template
 # (mer-hybris/droid-hal-configs 1dae7f2, Jolla Ltd.; the package is tagged
-# GPLv2 in droid-configs.inc). NOTES.md gives the evidence for every value.
+# GPLv2 in droid-configs.inc).
 #
 # These and other macros are documented in ../droid-configs-device/droid-configs.inc
 #

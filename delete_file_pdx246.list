@@ -8,5 +8,5 @@
 # This vendor's netmgrd waits for HIDL android.system.net.netd@1.1::INetd/default
 # (libnetmgr_utils.so); without this file dummy_netd serves it on /dev/hwbinder.
 # Without it netmgrd never finishes init, DSI never initializes, and qcril
-# answers every setupDataCall with cause 0x1004 (NOTES D22).
+# answers every setupDataCall with cause 0x1004.
 /etc/sysconfig/dummy_netd
