@@ -87,8 +87,9 @@ Recommends: waydroid-runner
 %description waydroid
 Device glue for Waydroid on the Sony Xperia 10 VI: the container's view of
 /vendor without the vendor's copies of the libraries the Android 13 image
-ships itself, the container's binder nodes in /dev, and a check that keeps
-the container off the phone's own binder. Also masks lxc@multi-user.service,
+ships itself, the container's binder nodes in /dev, a check that keeps the
+container off the phone's own binder, and the download channel with the
+Android images the port is tested with. Also masks lxc@multi-user.service,
 which the lxc package's enabled template unit would start (and fail) at
 every boot.
 
@@ -101,6 +102,8 @@ every boot.
 %dir /usr/lib/systemd/system/waydroid-container.service.d
 /usr/lib/systemd/system/waydroid-container.service.d/50-pdx246.conf
 /usr/lib/tmpfiles.d/pdx246-waydroid.conf
+%dir /usr/share/waydroid-extra
+/usr/share/waydroid-extra/channels.cfg
 # lxc's install enables the template lxc@.service without an instance, so
 # systemd starts lxc@multi-user.service at every boot and it fails (no such
 # container). A link to /dev/null masks that one instance.
@@ -108,10 +111,6 @@ every boot.
 
 %post waydroid
 systemd-tmpfiles --create /usr/lib/tmpfiles.d/pdx246-waydroid.conf || :
-# Pre-installed Waydroid images live on /home (the root filesystem is small).
-# Not in tmpfiles.d: at boot an encrypted /home is still locked when tmpfiles
-# runs, so the directories would land on the root filesystem below it.
-mkdir -p /home/waydroid-extra/images || :
 systemctl daemon-reload || :
 systemctl reset-failed lxc@multi-user.service >/dev/null 2>&1 || :
 # Waydroid starts its own dnsmasq on its bridge; the system-wide service would

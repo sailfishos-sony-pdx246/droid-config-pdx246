@@ -13,3 +13,4 @@
 /usr/lib/systemd/system/waydroid-container\.service\.d/
 /usr/lib/tmpfiles\.d/pdx246-waydroid\.conf
 /usr/lib/systemd/system/lxc@multi-user\.service
+/usr/share/waydroid-extra/
