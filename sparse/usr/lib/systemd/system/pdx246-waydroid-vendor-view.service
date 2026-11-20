@@ -8,11 +8,17 @@
 # droid-hal mount units in local-fs.target. The view itself lives on /home
 # (/var/lib/waydroid links to /home/waydroid), which is not in local-fs.target
 # when it is encrypted: it is mounted only after the security code.
+# Not at the first start of a new image, while the home is still to be
+# encrypted (the marker below): the encryption copies all of /home, mounts
+# included, to /tmp and back, so the 1.5 GB of the view would end up in the new
+# home. When the container service starts later, it mounts the view (drop-in
+# 50-pdx246.conf); by then the encryption has removed the marker.
 [Unit]
 Description=Waydroid vendor view for pdx246
 After=local-fs.target
 RequiresMountsFor=/home/waydroid
 ConditionPathIsDirectory=/vendor/lib64
+ConditionPathExists=!/var/lib/sailfish-device-encryption/encrypt-home
 
 [Service]
 Type=oneshot
