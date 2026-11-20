@@ -50,6 +50,14 @@ Requires: geoclue-provider-mlsdb
 # to improve camera startup times and the like (pdx246: 8 GB)
 Requires: mapplauncherd-booster-silica-qt5-media
 
+# Android apps (Waydroid): the container, the port's glue and the Waydroid app,
+# dormant until the app's first start sets Android up (the images come from the
+# port's download channel); the container service starts on demand only.
+# waydroid's dnsmasq, python3-gbinder and waydroid-sensors are built with the
+# port (Jolla's repositories do not have them).
+Requires: droid-config-pdx246-waydroid
+Requires: waydroid-runner
+
 %description -n patterns-sailfish-device-configuration-pdx246
 Pattern with packages for pdx246 configurations
 
